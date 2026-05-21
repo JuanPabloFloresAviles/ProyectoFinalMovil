@@ -1,222 +1,394 @@
 package com.example.proyectofinalmovil
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.proyectofinalmovil.components.AppIcons
 import com.example.proyectofinalmovil.components.UiAppBar
-import com.example.proyectofinalmovil.components.UiAvatar
-import com.example.proyectofinalmovil.components.UiBadge
-import com.example.proyectofinalmovil.components.UiCard
-import com.example.proyectofinalmovil.components.UiGhostButton
-import com.example.proyectofinalmovil.components.UiInput
-import com.example.proyectofinalmovil.components.UiLoader
-import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiTabBar
 import com.example.proyectofinalmovil.components.UiTabItem
-import com.example.proyectofinalmovil.services.mock.MockMovie
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockUsers
+import com.example.proyectofinalmovil.navigation.AppDestination
+import com.example.proyectofinalmovil.navigation.bottomBarDestinations
+import com.example.proyectofinalmovil.screens.PlaceholderScreen
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 @Composable
 fun AppRoot() {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            item {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val tabItems = listOf(
+        UiTabItem("Cartelera", AppIcons.Home),
+        UiTabItem("Boletos", AppIcons.Tickets),
+        UiTabItem("Comunidad", AppIcons.Community),
+        UiTabItem("Historial", AppIcons.History),
+        UiTabItem("Perfil", AppIcons.Profile),
+    )
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
                 UiAppBar(
-                    title = "CineUABCS",
-                    navigationIcon = AppIcons.Back,
+                    title = currentTitle(currentRoute),
+                    navigationIcon = if (currentRoute == AppDestination.Splash.route) null else AppIcons.Back,
                     actionIcon = AppIcons.Search,
-                )
-            }
-            item {
-                Column(modifier = Modifier.padding(horizontal = 18.dp)) {
-                    Text(
-                        text = "Pantalla de papuejemplo",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Le digo hola ella me dice goodbye, le digo nena como tú ya no hay, dice que tiene novio pero yo no le creo, y es que se complica cada vez que la veo, eo",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            item {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
-                ) {
-                    items(mockMovies) { movie ->
-                        MovieHighlightCard(movie = movie)
-                    }
-                }
-            }
-            item {
-                Column(
-                    modifier = Modifier.padding(horizontal = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    UiInput(
-                        value = "",
-                        onValueChange = {},
-                        label = "Busqueda",
-                        placeholder = "Busca peliculas, amigos o funciones",
-                        leadingIcon = AppIcons.Search,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        UiPrimaryButton(
-                            text = "Continuar",
-                            onClick = {},
-                            modifier = Modifier.weight(1f),
-                        )
-                        UiGhostButton(
-                            text = "Luego",
-                            onClick = {},
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-            item {
-                UiCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
-                    elevated = true,
-                ) {
-                    Text(
-                        text = "Amigos activos",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(mockUsers) { user ->
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                UiAvatar(user = user)
-                                Text(
-                                    text = user.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                UiBadge(
-                                    text = user.favoriteGenre,
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                    onNavigationClick = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(AppDestination.Splash.route)
                         }
-                    }
-                }
-            }
-            item {
-                UiCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
-                ) {
-                    Text(
-                        text = "Loader base",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    UiLoader(text = "Preparando la cartelera...")
-                }
-            }
-            item {
-                UiTabBar(
-                    tabs = listOf(
-                        UiTabItem("Inicio", AppIcons.Home),
-                        UiTabItem("Boletos", AppIcons.Tickets),
-                        UiTabItem("Comunidad", AppIcons.Community),
-                        UiTabItem("Perfil", AppIcons.Profile),
-                    ),
-                    selectedIndex = selectedTab,
-                    onTabSelected = { selectedTab = it },
-                    modifier = Modifier.padding(horizontal = 18.dp),
+                    },
                 )
-                Spacer(modifier = Modifier.height(24.dp))
-            }
+            },
+            bottomBar = {
+                if (currentRoute in bottomBarDestinations.map { it.route }) {
+                    UiTabBar(
+                        tabs = tabItems,
+                        selectedIndex = selectedTabIndex(currentRoute),
+                        onTabSelected = { index ->
+                            navController.navigate(bottomBarDestinations[index].route) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+            },
+        ) { innerPadding ->
+            AppNavHost(
+                modifier = Modifier.padding(innerPadding),
+                navController = navController,
+            )
         }
     }
 }
 
 @Composable
-private fun MovieHighlightCard(movie: MockMovie) {
-    UiCard(modifier = Modifier.size(width = 212.dp, height = 252.dp)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(128.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(movie.accentStart, movie.accentEnd),
-                    ),
+private fun AppNavHost(
+    modifier: Modifier = Modifier,
+    navController: NavHostController,
+) {
+    NavHost(
+        navController = navController,
+        startDestination = AppDestination.Splash.route,
+        modifier = modifier.fillMaxSize(),
+    ) {
+        composable(AppDestination.Splash.route) {
+            PlaceholderScreen(
+                current = AppDestination.Splash,
+                primaryDestinations = listOf(
+                    AppDestination.Login,
+                    AppDestination.Signup,
                 ),
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            UiBadge(text = movie.classification)
-            UiBadge(
-                text = "★ ${movie.rating}",
-                containerColor = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary,
+                secondaryDestinations = listOf(AppDestination.Browse),
+                onNavigate = { navController.navigate(it.route) },
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = movie.title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "${movie.genre} · ${movie.duration}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        composable(AppDestination.Login.route) {
+            PlaceholderScreen(
+                current = AppDestination.Login,
+                primaryDestinations = listOf(
+                    AppDestination.Signup,
+                    AppDestination.Browse,
+                ),
+                secondaryDestinations = listOf(AppDestination.Splash),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Signup.route) {
+            PlaceholderScreen(
+                current = AppDestination.Signup,
+                primaryDestinations = listOf(
+                    AppDestination.Login,
+                    AppDestination.Browse,
+                ),
+                secondaryDestinations = listOf(AppDestination.Splash),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Browse.route) {
+            PlaceholderScreen(
+                current = AppDestination.Browse,
+                primaryDestinations = listOf(
+                    AppDestination.MovieDetail,
+                    AppDestination.TicketQr,
+                ),
+                secondaryDestinations = listOf(
+                    AppDestination.History,
+                    AppDestination.Profile,
+                ),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.MovieDetail.route) {
+            PlaceholderScreen(
+                current = AppDestination.MovieDetail,
+                primaryDestinations = listOf(
+                    AppDestination.Showtimes,
+                    AppDestination.Reviews,
+                ),
+                secondaryDestinations = listOf(AppDestination.Browse),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Showtimes.route) {
+            PlaceholderScreen(
+                current = AppDestination.Showtimes,
+                primaryDestinations = listOf(
+                    AppDestination.Seats,
+                    AppDestination.MovieDetail,
+                ),
+                secondaryDestinations = listOf(AppDestination.Browse),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Seats.route) {
+            PlaceholderScreen(
+                current = AppDestination.Seats,
+                primaryDestinations = listOf(
+                    AppDestination.Concessions,
+                    AppDestination.Summary,
+                ),
+                secondaryDestinations = listOf(AppDestination.Showtimes),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Concessions.route) {
+            PlaceholderScreen(
+                current = AppDestination.Concessions,
+                primaryDestinations = listOf(
+                    AppDestination.Summary,
+                    AppDestination.Seats,
+                ),
+                secondaryDestinations = listOf(AppDestination.Showtimes),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Summary.route) {
+            PlaceholderScreen(
+                current = AppDestination.Summary,
+                primaryDestinations = listOf(
+                    AppDestination.Confirmation,
+                    AppDestination.Concessions,
+                ),
+                secondaryDestinations = listOf(AppDestination.Seats),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Confirmation.route) {
+            PlaceholderScreen(
+                current = AppDestination.Confirmation,
+                primaryDestinations = listOf(
+                    AppDestination.TicketQr,
+                    AppDestination.History,
+                ),
+                secondaryDestinations = listOf(AppDestination.Browse),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.TicketQr.route) {
+            PlaceholderScreen(
+                current = AppDestination.TicketQr,
+                primaryDestinations = listOf(
+                    AppDestination.History,
+                    AppDestination.Profile,
+                ),
+                secondaryDestinations = listOf(AppDestination.RecoverPurchase),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.History.route) {
+            PlaceholderScreen(
+                current = AppDestination.History,
+                primaryDestinations = listOf(
+                    AppDestination.RecoverPurchase,
+                    AppDestination.TicketQr,
+                ),
+                secondaryDestinations = listOf(AppDestination.Profile),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.RecoverPurchase.route) {
+            PlaceholderScreen(
+                current = AppDestination.RecoverPurchase,
+                primaryDestinations = listOf(
+                    AppDestination.History,
+                    AppDestination.Login,
+                ),
+                secondaryDestinations = listOf(AppDestination.Profile),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Reviews.route) {
+            PlaceholderScreen(
+                current = AppDestination.Reviews,
+                primaryDestinations = listOf(
+                    AppDestination.MovieDetail,
+                    AppDestination.Browse,
+                ),
+                secondaryDestinations = listOf(AppDestination.Profile),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Profile.route) {
+            PlaceholderScreen(
+                current = AppDestination.Profile,
+                primaryDestinations = listOf(
+                    AppDestination.RecoverPurchase,
+                    AppDestination.History,
+                ),
+                secondaryDestinations = listOf(
+                    AppDestination.Browse,
+                    AppDestination.TicketQr,
+                ),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.SocialHub.route) {
+            PlaceholderScreen(
+                current = AppDestination.SocialHub,
+                primaryDestinations = listOf(
+                    AppDestination.Requests,
+                    AppDestination.Friends,
+                    AppDestination.ChatList,
+                ),
+                secondaryDestinations = listOf(
+                    AppDestination.Recommendations,
+                    AppDestination.SearchUsers,
+                ),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Requests.route) {
+            PlaceholderScreen(
+                current = AppDestination.Requests,
+                primaryDestinations = listOf(
+                    AppDestination.Friends,
+                    AppDestination.SearchUsers,
+                ),
+                secondaryDestinations = listOf(AppDestination.SocialHub),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Friends.route) {
+            PlaceholderScreen(
+                current = AppDestination.Friends,
+                primaryDestinations = listOf(
+                    AppDestination.SearchUsers,
+                    AppDestination.ChatList,
+                    AppDestination.RecommendMovie,
+                ),
+                secondaryDestinations = listOf(AppDestination.SocialHub),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.SearchUsers.route) {
+            PlaceholderScreen(
+                current = AppDestination.SearchUsers,
+                primaryDestinations = listOf(
+                    AppDestination.Requests,
+                    AppDestination.Friends,
+                ),
+                secondaryDestinations = listOf(AppDestination.SocialHub),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.ChatList.route) {
+            PlaceholderScreen(
+                current = AppDestination.ChatList,
+                primaryDestinations = listOf(
+                    AppDestination.PrivateChat,
+                    AppDestination.Friends,
+                ),
+                secondaryDestinations = listOf(
+                    AppDestination.SocialHub,
+                    AppDestination.Recommendations,
+                ),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.PrivateChat.route) {
+            PlaceholderScreen(
+                current = AppDestination.PrivateChat,
+                primaryDestinations = listOf(
+                    AppDestination.RecommendMovie,
+                    AppDestination.ChatList,
+                ),
+                secondaryDestinations = listOf(AppDestination.Friends),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.RecommendMovie.route) {
+            PlaceholderScreen(
+                current = AppDestination.RecommendMovie,
+                primaryDestinations = listOf(
+                    AppDestination.Recommendations,
+                    AppDestination.PrivateChat,
+                ),
+                secondaryDestinations = listOf(AppDestination.Friends),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+        composable(AppDestination.Recommendations.route) {
+            PlaceholderScreen(
+                current = AppDestination.Recommendations,
+                primaryDestinations = listOf(
+                    AppDestination.MovieDetail,
+                    AppDestination.ChatList,
+                ),
+                secondaryDestinations = listOf(AppDestination.SocialHub),
+                onNavigate = { navController.navigate(it.route) },
+            )
+        }
+    }
+}
+
+private fun currentTitle(route: String?): String {
+    return when (route) {
+        AppDestination.Splash.route -> AppDestination.Splash.title
+        AppDestination.Login.route -> AppDestination.Login.title
+        AppDestination.Signup.route -> AppDestination.Signup.title
+        AppDestination.Browse.route -> AppDestination.Browse.title
+        AppDestination.MovieDetail.route -> AppDestination.MovieDetail.title
+        AppDestination.Showtimes.route -> AppDestination.Showtimes.title
+        AppDestination.Seats.route -> AppDestination.Seats.title
+        AppDestination.Concessions.route -> AppDestination.Concessions.title
+        AppDestination.Summary.route -> AppDestination.Summary.title
+        AppDestination.Confirmation.route -> AppDestination.Confirmation.title
+        AppDestination.TicketQr.route -> AppDestination.TicketQr.title
+        AppDestination.History.route -> AppDestination.History.title
+        AppDestination.RecoverPurchase.route -> AppDestination.RecoverPurchase.title
+        AppDestination.Reviews.route -> AppDestination.Reviews.title
+        AppDestination.Profile.route -> AppDestination.Profile.title
+        AppDestination.SocialHub.route -> AppDestination.SocialHub.title
+        AppDestination.Requests.route -> AppDestination.Requests.title
+        AppDestination.Friends.route -> AppDestination.Friends.title
+        AppDestination.SearchUsers.route -> AppDestination.SearchUsers.title
+        AppDestination.ChatList.route -> AppDestination.ChatList.title
+        AppDestination.PrivateChat.route -> AppDestination.PrivateChat.title
+        AppDestination.RecommendMovie.route -> AppDestination.RecommendMovie.title
+        AppDestination.Recommendations.route -> AppDestination.Recommendations.title
+        else -> "CineUABCS"
+    }
+}
+
+private fun selectedTabIndex(route: String?): Int {
+    return when (route) {
+        AppDestination.Browse.route -> 0
+        AppDestination.TicketQr.route -> 1
+        AppDestination.SocialHub.route -> 2
+        AppDestination.History.route -> 3
+        AppDestination.Profile.route -> 4
+        else -> 0
     }
 }
 
