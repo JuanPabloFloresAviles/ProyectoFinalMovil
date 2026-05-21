@@ -57,6 +57,7 @@ fun ProyectoFinalMovilTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = AppShapes,
         content = content,
     )
 }
