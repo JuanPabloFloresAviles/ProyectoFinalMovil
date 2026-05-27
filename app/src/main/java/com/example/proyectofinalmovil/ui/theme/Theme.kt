@@ -44,6 +44,7 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = CreamSurfaceAlt,
     onSurfaceVariant = WarmTextSoft,
     outline = WarmBorder,
+    surfaceContainer = White,
 )
 
 @Composable

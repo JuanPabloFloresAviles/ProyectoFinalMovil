@@ -21,6 +21,9 @@ import com.example.proyectofinalmovil.navigation.AppDestination
 import com.example.proyectofinalmovil.navigation.bottomBarDestinations
 import com.example.proyectofinalmovil.screens.PlaceholderScreen
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
+import com.example.proyectofinalmovil.screens.SplashScreen
+import com.example.proyectofinalmovil.screens.LoginScreen
+import com.example.proyectofinalmovil.screens.SignupScreen
 
 @Composable
 fun AppRoot() {
@@ -83,36 +86,20 @@ private fun AppNavHost(
         modifier = modifier.fillMaxSize(),
     ) {
         composable(AppDestination.Splash.route) {
-            PlaceholderScreen(
-                current = AppDestination.Splash,
-                primaryDestinations = listOf(
-                    AppDestination.Login,
-                    AppDestination.Signup,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            SplashScreen(
+                onComenzar = { navController.navigate(AppDestination.Login.route) },
+                onInvitado = { navController.navigate(AppDestination.Browse.route) },
             )
         }
         composable(AppDestination.Login.route) {
-            PlaceholderScreen(
-                current = AppDestination.Login,
-                primaryDestinations = listOf(
-                    AppDestination.Signup,
-                    AppDestination.Browse,
-                ),
-                secondaryDestinations = listOf(AppDestination.Splash),
-                onNavigate = { navController.navigate(it.route) },
+            LoginScreen(
+                onEntrar = { navController.navigate(AppDestination.Browse.route) },
+                onIrARegistro = { navController.navigate(AppDestination.Signup.route) },
             )
         }
         composable(AppDestination.Signup.route) {
-            PlaceholderScreen(
-                current = AppDestination.Signup,
-                primaryDestinations = listOf(
-                    AppDestination.Login,
-                    AppDestination.Browse,
-                ),
-                secondaryDestinations = listOf(AppDestination.Splash),
-                onNavigate = { navController.navigate(it.route) },
+            SignupScreen(
+                onCrearCuenta = { navController.navigate(AppDestination.Browse.route) },
             )
         }
         composable(AppDestination.Browse.route) {

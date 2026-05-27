@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 val Typography = Typography(
+    // Eslogan grande de splash — "Tu butaca / te está esperando."
     displayLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.ExtraBold,
@@ -16,9 +17,9 @@ val Typography = Typography(
     ),
     displayMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Bold,
-        fontSize = 34.sp,
-        lineHeight = 38.sp,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 38.sp,
+        lineHeight = 42.sp,
         letterSpacing = (-0.8).sp,
     ),
     headlineMedium = TextStyle(
@@ -28,11 +29,12 @@ val Typography = Typography(
         lineHeight = 32.sp,
         letterSpacing = (-0.6).sp,
     ),
+    // Nombre "CineUABCS" en el splash
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 26.sp,
+        lineHeight = 30.sp,
         letterSpacing = (-0.3).sp,
     ),
     titleMedium = TextStyle(
@@ -42,12 +44,13 @@ val Typography = Typography(
         lineHeight = 24.sp,
         letterSpacing = (-0.2).sp,
     ),
+    // "CINE UNIVERSITARIO" — letras espaciadas
     labelSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        letterSpacing = 1.2.sp,
+        letterSpacing = 1.5.sp,
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
@@ -58,9 +61,9 @@ val Typography = Typography(
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 15.sp,
-        lineHeight = 22.sp,
-        letterSpacing = (-0.1).sp,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.sp,
     ),
 )
