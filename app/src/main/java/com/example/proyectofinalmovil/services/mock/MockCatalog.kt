@@ -14,6 +14,8 @@ data class MockMovie(
     val accentEnd: Color,
     val isFeatured: Boolean = false,
     val isNew: Boolean = false,
+    val synopsis: String = "",
+    val cast: List<String> = emptyList(),
 )
 
 data class MockUser(
@@ -131,4 +133,46 @@ val mockUsers = listOf(
         avatarStart = Color(0xFF4AB07A),
         avatarEnd = Color(0xFF1F5A3D),
     ),
+)
+
+data class MockShowtime(
+    val time: String,
+    val room: String,
+    val roomType: String,
+    val format: String,
+    val price: Int,
+    val availableSeats: Int,
+)
+
+val mockShowtimesEstacion7 = listOf(
+    MockShowtime("15:40", "Sala 1", "Cinepremium", "2D · Subt.", 45, 89),
+    MockShowtime("18:10", "Sala 2", "Cinepremium", "2D · Subt.", 45, 24),
+    MockShowtime("20:50", "Sala 3", "Sala IMAX",   "IMAX · Subt.", 72, 102),
+    MockShowtime("22:30", "Sala 1", "Cinepremium", "2D · Dob.", 55, 56),
+)
+
+val mockShowtimesByMovieId: Map<String, List<MockShowtime>> = mapOf(
+    "estacion-7"    to mockShowtimesEstacion7,
+    "el-ultimo-faro" to listOf(
+        MockShowtime("16:00", "Sala 2", "Cinepremium", "2D · Subt.", 45, 60),
+        MockShowtime("19:30", "Sala 1", "Cinepremium", "2D · Dob.", 45, 30),
+    ),
+    "aurora-3024" to listOf(
+        MockShowtime("17:00", "Sala 3", "Sala IMAX", "IMAX · Subt.", 72, 80),
+        MockShowtime("21:00", "Sala 2", "Cinepremium", "2D · Subt.", 45, 12),
+    ),
+)
+
+val mockSynopsis: Map<String, String> = mapOf(
+    "estacion-7" to "En una remota estación ferroviaria del altiplano, siete desconocidos esperan un tren que tal vez nunca llegue. A medida que la noche avanza, descubren que sus historias están más entrelazadas de lo que imaginaban.",
+    "el-ultimo-faro" to "Un marinero retirado regresa a su pueblo natal para encontrarse con un faro que lleva décadas apagado. Lo que descubre ahí cambiará su comprensión de la familia y el tiempo.",
+    "aurora-3024" to "En el año 3024, una misión de rescate llega a una colonia espacial abandonada. La tripulación descubre que los colonos no se fueron solos.",
+    "cosecha-roja" to "Una periodista investiga una serie de desapariciones en un valle agrícola. Cada pista la lleva más profundo hacia una red de secretos que el pueblo lleva décadas ocultando.",
+    "memorias-del-rio" to "Un río que atraviesa tres generaciones de una familia indígena sirve de hilo conductor en este documental poético sobre la memoria, el territorio y la resistencia.",
+)
+
+val mockCast: Map<String, List<String>> = mapOf(
+    "estacion-7"     to listOf("Lucía M.", "Tomás A.", "Renata S.", "Joaquín D."),
+    "el-ultimo-faro" to listOf("Carlos V.", "Sofía R.", "Andrés P.", "Elena M."),
+    "aurora-3024"    to listOf("Mariana L.", "Diego F.", "Valentina C.", "Omar R."),
 )

@@ -25,6 +25,8 @@ import com.example.proyectofinalmovil.screens.SplashScreen
 import com.example.proyectofinalmovil.screens.LoginScreen
 import com.example.proyectofinalmovil.screens.SignupScreen
 import com.example.proyectofinalmovil.screens.BrowseScreen
+import com.example.proyectofinalmovil.screens.MovieDetailScreen
+import com.example.proyectofinalmovil.screens.ShowtimesScreen
 
 @Composable
 fun AppRoot() {
@@ -111,25 +113,22 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.MovieDetail.route) {
-            PlaceholderScreen(
-                current = AppDestination.MovieDetail,
-                primaryDestinations = listOf(
-                    AppDestination.Showtimes,
-                    AppDestination.Reviews,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            MovieDetailScreen(
+                movieId = "estacion-7",
+                onElegirFuncion = { movieId ->
+                    navController.navigate(AppDestination.Showtimes.route)
+                },
+                onVerResenas = { movieId ->
+                    navController.navigate(AppDestination.Reviews.route)
+                },
             )
         }
         composable(AppDestination.Showtimes.route) {
-            PlaceholderScreen(
-                current = AppDestination.Showtimes,
-                primaryDestinations = listOf(
-                    AppDestination.Seats,
-                    AppDestination.MovieDetail,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            ShowtimesScreen(
+                movieId = "estacion-7",
+                onContinuarAButacas = { showtimeId ->
+                    navController.navigate(AppDestination.Seats.route)
+                },
             )
         }
         composable(AppDestination.Seats.route) {
