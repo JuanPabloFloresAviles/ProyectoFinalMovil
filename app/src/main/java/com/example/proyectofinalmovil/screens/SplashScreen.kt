@@ -72,7 +72,6 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Subtítulo del logo
             Text(
                 text = "CINE UNIVERSITARIO",
                 style = MaterialTheme.typography.labelSmall,

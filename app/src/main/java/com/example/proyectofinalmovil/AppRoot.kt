@@ -24,6 +24,7 @@ import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 import com.example.proyectofinalmovil.screens.SplashScreen
 import com.example.proyectofinalmovil.screens.LoginScreen
 import com.example.proyectofinalmovil.screens.SignupScreen
+import com.example.proyectofinalmovil.screens.BrowseScreen
 
 @Composable
 fun AppRoot() {
@@ -103,17 +104,10 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Browse.route) {
-            PlaceholderScreen(
-                current = AppDestination.Browse,
-                primaryDestinations = listOf(
-                    AppDestination.MovieDetail,
-                    AppDestination.TicketQr,
-                ),
-                secondaryDestinations = listOf(
-                    AppDestination.History,
-                    AppDestination.Profile,
-                ),
-                onNavigate = { navController.navigate(it.route) },
+            BrowseScreen(
+                onMovieClick = { movieId ->
+                    navController.navigate(AppDestination.MovieDetail.route)
+                },
             )
         }
         composable(AppDestination.MovieDetail.route) {

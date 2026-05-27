@@ -16,9 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
-// Campo de texto reutilizable para todos los formularios de la app.
-// Soporta ícono al frente, contenido al final (ej. botón Mostrar/Ocultar),
-// transformación visual para contraseñas y estado de error con borde rojo.
 @Composable
 fun UiInput(
     value: String,
@@ -36,7 +33,6 @@ fun UiInput(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            // El label también se pone en rojo cuando hay error
             color = if (isError) MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),

@@ -46,12 +46,10 @@ fun LoginScreen(
     var contrasena by remember { mutableStateOf("") }
     var mostrarContrasena by remember { mutableStateOf(false) }
 
-    // Valida el correo con el patrón oficial de Android — más confiable que solo buscar @ y punto
     val correoValido = android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
     val contrasenaValida = contrasena.length >= 6
     val formularioListo = correoValido && contrasenaValida
 
-    // Solo muestra el error si el usuario ya escribió algo pero el correo sigue siendo inválido
     val mostrarErrorCorreo = correo.isNotEmpty() && !correoValido
 
     Column(
@@ -99,7 +97,6 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Campo de correo — muestra borde rojo si el formato es inválido
         UiInput(
             value = correo,
             onValueChange = { correo = it },
@@ -110,7 +107,6 @@ fun LoginScreen(
             isError = mostrarErrorCorreo,
         )
 
-        // Mensaje de error debajo del campo — aparece en cuanto el usuario escribe algo inválido
         if (mostrarErrorCorreo) {
             Text(
                 text = "Ingresa un correo válido, por ejemplo: nombre@dominio.com",
@@ -122,7 +118,6 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Campo de contraseña con botón mostrar/ocultar
         UiInput(
             value = contrasena,
             onValueChange = { contrasena = it },
@@ -150,7 +145,7 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
         ) {
-            TextButton(onClick = { /* pendiente para integración real */ }) {
+            TextButton(onClick = {}) {
                 Text(
                     text = "¿Olvidaste tu contraseña?",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -192,13 +187,13 @@ fun LoginScreen(
         ) {
             UiGhostButton(
                 text = "Google",
-                onClick = { /* pendiente para integración real */ },
+                onClick = {},
                 fillWidth = false,
                 modifier = Modifier.weight(1f),
             )
             UiGhostButton(
                 text = "Apple",
-                onClick = { /* pendiente para integración real */ },
+                onClick = {},
                 fillWidth = false,
                 modifier = Modifier.weight(1f),
             )

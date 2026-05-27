@@ -7,7 +7,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 val Typography = Typography(
-    // Eslogan grande de splash — "Tu butaca / te está esperando."
     displayLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.ExtraBold,
@@ -29,7 +28,6 @@ val Typography = Typography(
         lineHeight = 32.sp,
         letterSpacing = (-0.6).sp,
     ),
-    // Nombre "CineUABCS" en el splash
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.ExtraBold,
@@ -44,7 +42,6 @@ val Typography = Typography(
         lineHeight = 24.sp,
         letterSpacing = (-0.2).sp,
     ),
-    // "CINE UNIVERSITARIO" — letras espaciadas
     labelSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,

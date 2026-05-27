@@ -51,15 +51,12 @@ fun SignupScreen(
     var contrasena by remember { mutableStateOf("") }
     var aceptaTerminos by remember { mutableStateOf(false) }
 
-    // Validación de correo con el patrón oficial de Android
     val correoValido = android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
     val mostrarErrorCorreo = correo.isNotEmpty() && !correoValido
 
-    // Validación de fecha: debe tener formato dd/mm/aaaa y el usuario debe tener al menos 13 años
     val fechaValida = validarFecha(fechaNacimiento)
     val mostrarErrorFecha = fechaNacimiento.isNotEmpty() && !fechaValida
 
-    // Fuerza de la contraseña
     val fuerzaContrasena = calcularFuerza(contrasena)
     val textoFuerza = when {
         contrasena.isEmpty() -> ""
@@ -111,7 +108,6 @@ fun SignupScreen(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Nombre completo — sin validación especial más que no estar vacío
         UiInput(
             value = nombre,
             onValueChange = { nombre = it },
@@ -122,7 +118,6 @@ fun SignupScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Correo — borde rojo si el formato es inválido
         UiInput(
             value = correo,
             onValueChange = { correo = it },
@@ -144,11 +139,9 @@ fun SignupScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Fecha de nacimiento — formato dd/mm/aaaa, se aplica máscara automática al escribir
         UiInput(
             value = fechaNacimiento,
             onValueChange = { entrada ->
-                // Solo se aceptan dígitos y se formatea automáticamente con /
                 val soloDigitos = entrada.filter { it.isDigit() }.take(8)
                 fechaNacimiento = when {
                     soloDigitos.length > 4 -> "${soloDigitos.substring(0, 2)}/${soloDigitos.substring(2, 4)}/${soloDigitos.substring(4)}"
@@ -164,13 +157,10 @@ fun SignupScreen(
 
         if (mostrarErrorFecha) {
             val mensajeFecha = when {
-                // La fecha tiene el largo correcto pero no pasó la validación de edad
                 fechaNacimiento.length == 10 && !esMayorDe13(fechaNacimiento) ->
                     "Debes tener al menos 13 años para crear una cuenta"
-                // La fecha tiene todos los dígitos pero algún valor es imposible
                 fechaNacimiento.length == 10 ->
                     "La fecha no existe. Verifica día, mes y año"
-                // Todavía incompleta
                 else -> "Formato: DD/MM/AAAA"
             }
             Text(
@@ -258,7 +248,6 @@ fun SignupScreen(
     }
 }
 
-// Valida que la fecha exista y que el usuario tenga al menos 13 años
 private fun validarFecha(fecha: String): Boolean {
     if (fecha.length != 10) return false
     return try {
@@ -272,19 +261,16 @@ private fun validarFecha(fecha: String): Boolean {
         if (dia < 1 || dia > 31) return false
         if (anio < 1900 || anio > Calendar.getInstance().get(Calendar.YEAR)) return false
 
-        // Verifica que el día sea válido para ese mes usando Calendar
         val cal = Calendar.getInstance()
         cal.isLenient = false
         cal.set(anio, mes - 1, dia)
-        cal.time // lanza excepción si la fecha no existe
-
+        cal.time
         esMayorDe13(fecha)
     } catch (e: Exception) {
         false
     }
 }
 
-// Confirma que la fecha de nacimiento corresponde a alguien de al menos 13 años
 private fun esMayorDe13(fecha: String): Boolean {
     return try {
         val partes = fecha.split("/")

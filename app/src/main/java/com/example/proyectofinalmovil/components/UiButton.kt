@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-// Botón primario relleno. Se deshabilita automáticamente si enabled = false.
 @Composable
 fun UiPrimaryButton(
     text: String,
@@ -43,7 +42,6 @@ fun UiPrimaryButton(
     }
 }
 
-// Botón secundario con borde, sin relleno.
 @Composable
 fun UiGhostButton(
     text: String,
