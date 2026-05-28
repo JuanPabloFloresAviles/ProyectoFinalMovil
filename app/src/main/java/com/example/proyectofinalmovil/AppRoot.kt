@@ -27,6 +27,7 @@ import com.example.proyectofinalmovil.screens.SignupScreen
 import com.example.proyectofinalmovil.screens.BrowseScreen
 import com.example.proyectofinalmovil.screens.MovieDetailScreen
 import com.example.proyectofinalmovil.screens.ShowtimesScreen
+import com.example.proyectofinalmovil.screens.SeatsScreen
 
 @Composable
 fun AppRoot() {
@@ -132,14 +133,11 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Seats.route) {
-            PlaceholderScreen(
-                current = AppDestination.Seats,
-                primaryDestinations = listOf(
-                    AppDestination.Concessions,
-                    AppDestination.Summary,
-                ),
-                secondaryDestinations = listOf(AppDestination.Showtimes),
-                onNavigate = { navController.navigate(it.route) },
+            SeatsScreen(
+                movieId = "estacion-7",
+                onContinuarADulceria = {
+                    navController.navigate(AppDestination.Concessions.route)
+                },
             )
         }
         composable(AppDestination.Concessions.route) {
