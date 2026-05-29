@@ -176,3 +176,44 @@ val mockCast: Map<String, List<String>> = mapOf(
     "el-ultimo-faro" to listOf("Carlos V.", "Sofía R.", "Andrés P.", "Elena M."),
     "aurora-3024"    to listOf("Mariana L.", "Diego F.", "Valentina C.", "Omar R."),
 )
+
+// Productos de dulcería
+data class MockConcessionItem(
+    val id: String,
+    val name: String,
+    val description: String,
+    val price: Int,
+)
+
+val mockConcessions = listOf(
+    MockConcessionItem(
+        id = "palomitas-grandes",
+        name = "Palomitas Grandes",
+        description = "Balde de palomitas con mantequilla",
+        price = 95,
+    ),
+    MockConcessionItem(
+        id = "palomitas-medianas",
+        name = "Palomitas Medianas",
+        description = "Bolsa mediana de palomitas",
+        price = 65,
+    ),
+    MockConcessionItem(
+        id = "refresco",
+        name = "Refresco 600ml",
+        description = "Coca-Cola, Sprite o Fanta",
+        price = 45,
+    ),
+    MockConcessionItem(
+        id = "nachos",
+        name = "Nachos con Queso",
+        description = "Totopos con queso cheddar",
+        price = 75,
+    ),
+    MockConcessionItem(
+        id = "hot-dog",
+        name = "Hot Dog",
+        description = "Salchicha con pan, mostaza y catsup",
+        price = 55,
+    ),
+)

@@ -28,6 +28,8 @@ import com.example.proyectofinalmovil.screens.BrowseScreen
 import com.example.proyectofinalmovil.screens.MovieDetailScreen
 import com.example.proyectofinalmovil.screens.ShowtimesScreen
 import com.example.proyectofinalmovil.screens.SeatsScreen
+import com.example.proyectofinalmovil.screens.ConcessionsScreen
+import com.example.proyectofinalmovil.screens.SummaryScreen
 
 @Composable
 fun AppRoot() {
@@ -141,25 +143,20 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Concessions.route) {
-            PlaceholderScreen(
-                current = AppDestination.Concessions,
-                primaryDestinations = listOf(
-                    AppDestination.Summary,
-                    AppDestination.Seats,
-                ),
-                secondaryDestinations = listOf(AppDestination.Showtimes),
-                onNavigate = { navController.navigate(it.route) },
+            ConcessionsScreen(
+                onIrAlResumen = {
+                    navController.navigate(AppDestination.Summary.route)
+                },
+                onSaltarDulceria = {
+                    navController.navigate(AppDestination.Summary.route)
+                },
             )
         }
         composable(AppDestination.Summary.route) {
-            PlaceholderScreen(
-                current = AppDestination.Summary,
-                primaryDestinations = listOf(
-                    AppDestination.Confirmation,
-                    AppDestination.Concessions,
-                ),
-                secondaryDestinations = listOf(AppDestination.Seats),
-                onNavigate = { navController.navigate(it.route) },
+            SummaryScreen(
+                onConfirmarCompra = {
+                    navController.navigate(AppDestination.Confirmation.route)
+                },
             )
         }
         composable(AppDestination.Confirmation.route) {
