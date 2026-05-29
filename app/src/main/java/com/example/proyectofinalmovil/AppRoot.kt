@@ -30,6 +30,8 @@ import com.example.proyectofinalmovil.screens.ShowtimesScreen
 import com.example.proyectofinalmovil.screens.SeatsScreen
 import com.example.proyectofinalmovil.screens.ConcessionsScreen
 import com.example.proyectofinalmovil.screens.SummaryScreen
+import com.example.proyectofinalmovil.screens.ConfirmationScreen
+import com.example.proyectofinalmovil.screens.TicketQrScreen
 
 @Composable
 fun AppRoot() {
@@ -160,25 +162,27 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Confirmation.route) {
-            PlaceholderScreen(
-                current = AppDestination.Confirmation,
-                primaryDestinations = listOf(
-                    AppDestination.TicketQr,
-                    AppDestination.History,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            ConfirmationScreen(
+                onVerBoleto = {
+                    navController.navigate(AppDestination.TicketQr.route)
+                },
+                onVolverACartelera = {
+                    navController.navigate(AppDestination.Browse.route) {
+                        popUpTo(AppDestination.Browse.route) { inclusive = true }
+                    }
+                },
             )
         }
         composable(AppDestination.TicketQr.route) {
-            PlaceholderScreen(
-                current = AppDestination.TicketQr,
-                primaryDestinations = listOf(
-                    AppDestination.History,
-                    AppDestination.Profile,
-                ),
-                secondaryDestinations = listOf(AppDestination.RecoverPurchase),
-                onNavigate = { navController.navigate(it.route) },
+            TicketQrScreen(
+                onIrAlHistorial = {
+                    navController.navigate(AppDestination.History.route)
+                },
+                onVolverACartelera = {
+                    navController.navigate(AppDestination.Browse.route) {
+                        popUpTo(AppDestination.Browse.route) { inclusive = true }
+                    }
+                },
             )
         }
         composable(AppDestination.History.route) {
