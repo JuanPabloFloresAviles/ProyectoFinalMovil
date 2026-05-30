@@ -1,5 +1,6 @@
 package com.example.proyectofinalmovil.ui.theme
 
+import android.R
 import androidx.compose.ui.graphics.Color
 
 val CreamBackground = Color(0xFFFFF6EA)
@@ -21,3 +22,5 @@ val NightSurface = Color(0xFF1C3247)
 val NightSurfaceAlt = Color(0xFF244055)
 val NightText = Color(0xFFF1EDDC)
 val NightTextSoft = Color(0xC7F1EDDC)
+
+val White = Color(0xFFFFFFFF)

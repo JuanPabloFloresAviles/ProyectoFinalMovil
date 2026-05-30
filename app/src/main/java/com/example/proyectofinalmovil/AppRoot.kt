@@ -21,6 +21,17 @@ import com.example.proyectofinalmovil.navigation.AppDestination
 import com.example.proyectofinalmovil.navigation.bottomBarDestinations
 import com.example.proyectofinalmovil.screens.PlaceholderScreen
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
+import com.example.proyectofinalmovil.screens.SplashScreen
+import com.example.proyectofinalmovil.screens.LoginScreen
+import com.example.proyectofinalmovil.screens.SignupScreen
+import com.example.proyectofinalmovil.screens.BrowseScreen
+import com.example.proyectofinalmovil.screens.MovieDetailScreen
+import com.example.proyectofinalmovil.screens.ShowtimesScreen
+import com.example.proyectofinalmovil.screens.SeatsScreen
+import com.example.proyectofinalmovil.screens.ConcessionsScreen
+import com.example.proyectofinalmovil.screens.SummaryScreen
+import com.example.proyectofinalmovil.screens.ConfirmationScreen
+import com.example.proyectofinalmovil.screens.TicketQrScreen
 
 @Composable
 fun AppRoot() {
@@ -83,127 +94,95 @@ private fun AppNavHost(
         modifier = modifier.fillMaxSize(),
     ) {
         composable(AppDestination.Splash.route) {
-            PlaceholderScreen(
-                current = AppDestination.Splash,
-                primaryDestinations = listOf(
-                    AppDestination.Login,
-                    AppDestination.Signup,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            SplashScreen(
+                onComenzar = { navController.navigate(AppDestination.Login.route) },
+                onInvitado = { navController.navigate(AppDestination.Browse.route) },
             )
         }
         composable(AppDestination.Login.route) {
-            PlaceholderScreen(
-                current = AppDestination.Login,
-                primaryDestinations = listOf(
-                    AppDestination.Signup,
-                    AppDestination.Browse,
-                ),
-                secondaryDestinations = listOf(AppDestination.Splash),
-                onNavigate = { navController.navigate(it.route) },
+            LoginScreen(
+                onEntrar = { navController.navigate(AppDestination.Browse.route) },
+                onIrARegistro = { navController.navigate(AppDestination.Signup.route) },
             )
         }
         composable(AppDestination.Signup.route) {
-            PlaceholderScreen(
-                current = AppDestination.Signup,
-                primaryDestinations = listOf(
-                    AppDestination.Login,
-                    AppDestination.Browse,
-                ),
-                secondaryDestinations = listOf(AppDestination.Splash),
-                onNavigate = { navController.navigate(it.route) },
+            SignupScreen(
+                onCrearCuenta = { navController.navigate(AppDestination.Browse.route) },
             )
         }
         composable(AppDestination.Browse.route) {
-            PlaceholderScreen(
-                current = AppDestination.Browse,
-                primaryDestinations = listOf(
-                    AppDestination.MovieDetail,
-                    AppDestination.TicketQr,
-                ),
-                secondaryDestinations = listOf(
-                    AppDestination.History,
-                    AppDestination.Profile,
-                ),
-                onNavigate = { navController.navigate(it.route) },
+            BrowseScreen(
+                onMovieClick = { movieId ->
+                    navController.navigate(AppDestination.MovieDetail.route)
+                },
             )
         }
         composable(AppDestination.MovieDetail.route) {
-            PlaceholderScreen(
-                current = AppDestination.MovieDetail,
-                primaryDestinations = listOf(
-                    AppDestination.Showtimes,
-                    AppDestination.Reviews,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            MovieDetailScreen(
+                movieId = "estacion-7",
+                onElegirFuncion = { movieId ->
+                    navController.navigate(AppDestination.Showtimes.route)
+                },
+                onVerResenas = { movieId ->
+                    navController.navigate(AppDestination.Reviews.route)
+                },
             )
         }
         composable(AppDestination.Showtimes.route) {
-            PlaceholderScreen(
-                current = AppDestination.Showtimes,
-                primaryDestinations = listOf(
-                    AppDestination.Seats,
-                    AppDestination.MovieDetail,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            ShowtimesScreen(
+                movieId = "estacion-7",
+                onContinuarAButacas = { showtimeId ->
+                    navController.navigate(AppDestination.Seats.route)
+                },
             )
         }
         composable(AppDestination.Seats.route) {
-            PlaceholderScreen(
-                current = AppDestination.Seats,
-                primaryDestinations = listOf(
-                    AppDestination.Concessions,
-                    AppDestination.Summary,
-                ),
-                secondaryDestinations = listOf(AppDestination.Showtimes),
-                onNavigate = { navController.navigate(it.route) },
+            SeatsScreen(
+                movieId = "estacion-7",
+                onContinuarADulceria = {
+                    navController.navigate(AppDestination.Concessions.route)
+                },
             )
         }
         composable(AppDestination.Concessions.route) {
-            PlaceholderScreen(
-                current = AppDestination.Concessions,
-                primaryDestinations = listOf(
-                    AppDestination.Summary,
-                    AppDestination.Seats,
-                ),
-                secondaryDestinations = listOf(AppDestination.Showtimes),
-                onNavigate = { navController.navigate(it.route) },
+            ConcessionsScreen(
+                onIrAlResumen = {
+                    navController.navigate(AppDestination.Summary.route)
+                },
+                onSaltarDulceria = {
+                    navController.navigate(AppDestination.Summary.route)
+                },
             )
         }
         composable(AppDestination.Summary.route) {
-            PlaceholderScreen(
-                current = AppDestination.Summary,
-                primaryDestinations = listOf(
-                    AppDestination.Confirmation,
-                    AppDestination.Concessions,
-                ),
-                secondaryDestinations = listOf(AppDestination.Seats),
-                onNavigate = { navController.navigate(it.route) },
+            SummaryScreen(
+                onConfirmarCompra = {
+                    navController.navigate(AppDestination.Confirmation.route)
+                },
             )
         }
         composable(AppDestination.Confirmation.route) {
-            PlaceholderScreen(
-                current = AppDestination.Confirmation,
-                primaryDestinations = listOf(
-                    AppDestination.TicketQr,
-                    AppDestination.History,
-                ),
-                secondaryDestinations = listOf(AppDestination.Browse),
-                onNavigate = { navController.navigate(it.route) },
+            ConfirmationScreen(
+                onVerBoleto = {
+                    navController.navigate(AppDestination.TicketQr.route)
+                },
+                onVolverACartelera = {
+                    navController.navigate(AppDestination.Browse.route) {
+                        popUpTo(AppDestination.Browse.route) { inclusive = true }
+                    }
+                },
             )
         }
         composable(AppDestination.TicketQr.route) {
-            PlaceholderScreen(
-                current = AppDestination.TicketQr,
-                primaryDestinations = listOf(
-                    AppDestination.History,
-                    AppDestination.Profile,
-                ),
-                secondaryDestinations = listOf(AppDestination.RecoverPurchase),
-                onNavigate = { navController.navigate(it.route) },
+            TicketQrScreen(
+                onIrAlHistorial = {
+                    navController.navigate(AppDestination.History.route)
+                },
+                onVolverACartelera = {
+                    navController.navigate(AppDestination.Browse.route) {
+                        popUpTo(AppDestination.Browse.route) { inclusive = true }
+                    }
+                },
             )
         }
         composable(AppDestination.History.route) {

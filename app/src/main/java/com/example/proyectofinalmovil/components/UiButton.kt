@@ -19,15 +19,19 @@ fun UiPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
+    enabled: Boolean = true,
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = if (fillWidth) modifier.fillMaxWidth() else modifier,
         shape = MaterialTheme.shapes.medium,
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = MaterialTheme.colorScheme.outline,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
     ) {
         Text(
@@ -44,9 +48,11 @@ fun UiGhostButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     fillWidth: Boolean = true,
+    enabled: Boolean = true,
 ) {
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = if (fillWidth) modifier.fillMaxWidth() else modifier,
         shape = MaterialTheme.shapes.medium,
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
