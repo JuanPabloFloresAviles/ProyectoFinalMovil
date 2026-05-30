@@ -16,11 +16,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.proyectofinalmovil.services.mock.MockUser
+import com.example.proyectofinalmovil.services.mock.MockClient
 
 @Composable
 fun UiAvatar(
-    user: MockUser,
+    user: MockClient,
     modifier: Modifier = Modifier,
     size: Int = 52,
 ) {

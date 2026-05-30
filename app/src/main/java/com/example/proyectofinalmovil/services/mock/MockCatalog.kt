@@ -18,7 +18,7 @@ data class MockMovie(
     val cast: List<String> = emptyList(),
 )
 
-data class MockUser(
+data class MockClient(
     val name: String,
     val initials: String,
     val favoriteGenre: String,
@@ -109,8 +109,8 @@ val mockMovies = listOf(
     ),
 )
 
-val mockUsers = listOf(
-    MockUser(
+val mockClients = listOf(
+    MockClient(
         name = "Daniel Rojas",
         initials = "DR",
         favoriteGenre = "Thriller",
@@ -118,7 +118,7 @@ val mockUsers = listOf(
         avatarEnd = Color(0xFF781820),
         isOnline = true,
     ),
-    MockUser(
+    MockClient(
         name = "Mariana López",
         initials = "ML",
         favoriteGenre = "Sci-Fi",
@@ -126,7 +126,7 @@ val mockUsers = listOf(
         avatarEnd = Color(0xFF1A3A5A),
         isOnline = true,
     ),
-    MockUser(
+    MockClient(
         name = "Sofía Tamez",
         initials = "ST",
         favoriteGenre = "Documental",
@@ -182,6 +182,7 @@ data class MockConcessionItem(
     val id: String,
     val name: String,
     val description: String,
+    val cost: Int,
     val price: Int,
 )
 
@@ -190,30 +191,35 @@ val mockConcessions = listOf(
         id = "palomitas-grandes",
         name = "Palomitas Grandes",
         description = "Balde de palomitas con mantequilla",
+        cost = 52,
         price = 95,
     ),
     MockConcessionItem(
         id = "palomitas-medianas",
         name = "Palomitas Medianas",
         description = "Bolsa mediana de palomitas",
+        cost = 34,
         price = 65,
     ),
     MockConcessionItem(
         id = "refresco",
         name = "Refresco 600ml",
         description = "Coca-Cola, Sprite o Fanta",
+        cost = 18,
         price = 45,
     ),
     MockConcessionItem(
         id = "nachos",
         name = "Nachos con Queso",
         description = "Totopos con queso cheddar",
+        cost = 39,
         price = 75,
     ),
     MockConcessionItem(
         id = "hot-dog",
         name = "Hot Dog",
         description = "Salchicha con pan, mostaza y catsup",
+        cost = 27,
         price = 55,
     ),
 )
