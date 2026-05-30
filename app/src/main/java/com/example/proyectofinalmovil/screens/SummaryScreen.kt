@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
+import com.example.proyectofinalmovil.services.mock.MockConcessionItem
 import com.example.proyectofinalmovil.services.mock.mockMovies
 import com.example.proyectofinalmovil.services.mock.mockShowtimesByMovieId
 import com.example.proyectofinalmovil.services.mock.mockConcessions
@@ -62,10 +63,10 @@ fun SummaryScreen(
 
     // Dulcería mock (simulando 1 palomitas grandes y 2 refrescos)
     val itemsDulceria = listOf(
-        Triple(mockConcessions[0].name, 1, mockConcessions[0].price),  // Palomitas Grandes x1
-        Triple(mockConcessions[2].name, 2, mockConcessions[2].price),  // Refresco x2
+        DulceriaResumenItem(mockConcessions[0], 1),  // Palomitas Grandes x1
+        DulceriaResumenItem(mockConcessions[2], 2),  // Refresco x2
     )
-    val subtotalDulceria = itemsDulceria.sumOf { (_, cant, precio) -> cant * precio }
+    val subtotalDulceria = itemsDulceria.sumOf { item -> item.cantidad * item.producto.price }
 
     val totalGeneral = subtotalBoletos + subtotalDulceria
 
@@ -159,7 +160,7 @@ fun SummaryScreen(
 
             // Sección de dulcería
             SeccionResumen(titulo = "Dulcería") {
-                itemsDulceria.forEach { (nombre, cantidad, precioUnitario) ->
+                itemsDulceria.forEach { item ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -167,12 +168,12 @@ fun SummaryScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = "$nombre × $cantidad",
+                            text = "${item.producto.name} × ${item.cantidad}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = GrisTexto.copy(alpha = 0.7f),
                         )
                         Text(
-                            text = "$${cantidad * precioUnitario}",
+                            text = "$${item.cantidad * item.producto.price}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = GrisTexto,
@@ -240,6 +241,11 @@ fun SummaryScreen(
         }
     }
 }
+
+private data class DulceriaResumenItem(
+    val producto: MockConcessionItem,
+    val cantidad: Int,
+)
 
 /**
  * Sección con título y contenido dentro de una tarjeta.
