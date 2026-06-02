@@ -6,6 +6,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
@@ -36,6 +38,14 @@ import com.example.proyectofinalmovil.screens.HistoryScreen
 import com.example.proyectofinalmovil.screens.RecoverPurchaseScreen
 import com.example.proyectofinalmovil.screens.ProfileScreen
 import com.example.proyectofinalmovil.screens.ReviewsScreen
+import com.example.proyectofinalmovil.screens.SocialHubScreen
+import com.example.proyectofinalmovil.screens.RequestsScreen
+import com.example.proyectofinalmovil.screens.FriendsScreen
+import com.example.proyectofinalmovil.screens.SearchUsersScreen
+import com.example.proyectofinalmovil.services.mock.mockIncomingRequestIds
+import com.example.proyectofinalmovil.services.mock.mockInitialFriendIds
+import com.example.proyectofinalmovil.services.mock.mockOutgoingRequestIds
+import com.example.proyectofinalmovil.services.mock.mockSocialUsers
 
 @Composable
 fun AppRoot() {
@@ -92,6 +102,16 @@ private fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController,
 ) {
+    val friendIds = remember {
+        mutableStateListOf<String>().apply { addAll(mockInitialFriendIds) }
+    }
+    val incomingRequestIds = remember {
+        mutableStateListOf<String>().apply { addAll(mockIncomingRequestIds) }
+    }
+    val outgoingRequestIds = remember {
+        mutableStateListOf<String>().apply { addAll(mockOutgoingRequestIds) }
+    }
+
     NavHost(
         navController = navController,
         startDestination = AppDestination.Splash.route,
@@ -236,52 +256,75 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.SocialHub.route) {
-            PlaceholderScreen(
-                current = AppDestination.SocialHub,
-                primaryDestinations = listOf(
-                    AppDestination.Requests,
-                    AppDestination.Friends,
-                    AppDestination.ChatList,
-                ),
-                secondaryDestinations = listOf(
-                    AppDestination.Recommendations,
-                    AppDestination.SearchUsers,
-                ),
-                onNavigate = { navController.navigate(it.route) },
+            SocialHubScreen(
+                friendsCount = friendIds.size,
+                incomingRequestsCount = incomingRequestIds.size,
+                outgoingRequestsCount = outgoingRequestIds.size,
+                onVerSolicitudes = {
+                    navController.navigate(AppDestination.Requests.route)
+                },
+                onVerAmigos = {
+                    navController.navigate(AppDestination.Friends.route)
+                },
+                onBuscarPersonas = {
+                    navController.navigate(AppDestination.SearchUsers.route)
+                },
             )
         }
         composable(AppDestination.Requests.route) {
-            PlaceholderScreen(
-                current = AppDestination.Requests,
-                primaryDestinations = listOf(
-                    AppDestination.Friends,
-                    AppDestination.SearchUsers,
-                ),
-                secondaryDestinations = listOf(AppDestination.SocialHub),
-                onNavigate = { navController.navigate(it.route) },
+            RequestsScreen(
+                users = mockSocialUsers,
+                incomingRequestIds = incomingRequestIds,
+                outgoingRequestIds = outgoingRequestIds,
+                onAccept = { userId ->
+                    incomingRequestIds.remove(userId)
+                    if (userId !in friendIds) friendIds.add(userId)
+                },
+                onReject = { userId ->
+                    incomingRequestIds.remove(userId)
+                },
+                onCancel = { userId ->
+                    outgoingRequestIds.remove(userId)
+                },
+                onVerAmigos = {
+                    navController.navigate(AppDestination.Friends.route)
+                },
+                onBuscarPersonas = {
+                    navController.navigate(AppDestination.SearchUsers.route)
+                },
             )
         }
         composable(AppDestination.Friends.route) {
-            PlaceholderScreen(
-                current = AppDestination.Friends,
-                primaryDestinations = listOf(
-                    AppDestination.SearchUsers,
-                    AppDestination.ChatList,
-                    AppDestination.RecommendMovie,
-                ),
-                secondaryDestinations = listOf(AppDestination.SocialHub),
-                onNavigate = { navController.navigate(it.route) },
+            FriendsScreen(
+                friends = mockSocialUsers.filter { it.id in friendIds },
+                onBuscarPersonas = {
+                    navController.navigate(AppDestination.SearchUsers.route)
+                },
+                onVerSolicitudes = {
+                    navController.navigate(AppDestination.Requests.route)
+                },
             )
         }
         composable(AppDestination.SearchUsers.route) {
-            PlaceholderScreen(
-                current = AppDestination.SearchUsers,
-                primaryDestinations = listOf(
-                    AppDestination.Requests,
-                    AppDestination.Friends,
-                ),
-                secondaryDestinations = listOf(AppDestination.SocialHub),
-                onNavigate = { navController.navigate(it.route) },
+            SearchUsersScreen(
+                users = mockSocialUsers,
+                friendIds = friendIds,
+                incomingRequestIds = incomingRequestIds,
+                outgoingRequestIds = outgoingRequestIds,
+                onAdd = { userId ->
+                    if (userId !in outgoingRequestIds && userId !in friendIds) {
+                        outgoingRequestIds.add(userId)
+                    }
+                },
+                onCancel = { userId ->
+                    outgoingRequestIds.remove(userId)
+                },
+                onVerSolicitudes = {
+                    navController.navigate(AppDestination.Requests.route)
+                },
+                onVerAmigos = {
+                    navController.navigate(AppDestination.Friends.route)
+                },
             )
         }
         composable(AppDestination.ChatList.route) {

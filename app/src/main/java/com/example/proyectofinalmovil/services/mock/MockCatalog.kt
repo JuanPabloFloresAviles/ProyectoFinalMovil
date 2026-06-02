@@ -276,6 +276,77 @@ val mockReviews = listOf(
     ),
 )
 
+data class MockSocialUser(
+    val id: String,
+    val name: String,
+    val initials: String,
+    val career: String,
+    val favoriteGenre: String,
+    val bio: String,
+    val avatarStart: Color,
+    val avatarEnd: Color,
+    val isOnline: Boolean = false,
+)
+
+val mockSocialUsers = listOf(
+    MockSocialUser(
+        id = "daniel-rojas",
+        name = "Daniel Rojas",
+        initials = "DR",
+        career = "Ingeniería en Software",
+        favoriteGenre = "Thriller",
+        bio = "Busca películas intensas para comentar después de clase.",
+        avatarStart = Color(0xFFD8454A),
+        avatarEnd = Color(0xFF781820),
+        isOnline = true,
+    ),
+    MockSocialUser(
+        id = "mariana-lopez",
+        name = "Mariana López",
+        initials = "ML",
+        career = "Comunicación",
+        favoriteGenre = "Sci-Fi",
+        bio = "Fan de la ciencia ficción y de las funciones nocturnas.",
+        avatarStart = Color(0xFF3A6A8C),
+        avatarEnd = Color(0xFF1A3A5A),
+        isOnline = true,
+    ),
+    MockSocialUser(
+        id = "sofia-tamez",
+        name = "Sofía Tamez",
+        initials = "ST",
+        career = "Biología Marina",
+        favoriteGenre = "Documental",
+        bio = "Tiene una lista enorme de documentales pendientes.",
+        avatarStart = Color(0xFF4AB07A),
+        avatarEnd = Color(0xFF1F5A3D),
+    ),
+    MockSocialUser(
+        id = "luis-ibarra",
+        name = "Luis Ibarra",
+        initials = "LI",
+        career = "Administración",
+        favoriteGenre = "Animación",
+        bio = "Siempre encuentra funciones familiares y estrenos ligeros.",
+        avatarStart = Color(0xFFFFA84A),
+        avatarEnd = Color(0xFFC06A12),
+    ),
+    MockSocialUser(
+        id = "camila-vega",
+        name = "Camila Vega",
+        initials = "CV",
+        career = "Arquitectura",
+        favoriteGenre = "Drama",
+        bio = "Le gustan las historias visuales y los finales agridulces.",
+        avatarStart = Color(0xFF8C5AD8),
+        avatarEnd = Color(0xFF3F236F),
+    ),
+)
+
+val mockInitialFriendIds = listOf("daniel-rojas", "mariana-lopez")
+val mockIncomingRequestIds = listOf("sofia-tamez")
+val mockOutgoingRequestIds = listOf("luis-ibarra")
+
 val mockSynopsis: Map<String, String> = mapOf(
     "estacion-7" to "En una remota estación ferroviaria del altiplano, siete desconocidos esperan un tren que tal vez nunca llegue. A medida que la noche avanza, descubren que sus historias están más entrelazadas de lo que imaginaban.",
     "el-ultimo-faro" to "Un marinero retirado regresa a su pueblo natal para encontrarse con un faro que lleva décadas apagado. Lo que descubre ahí cambiará su comprensión de la familia y el tiempo.",
