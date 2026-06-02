@@ -29,8 +29,7 @@ import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockPurchase
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockPurchases
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 private val FondoCrema = Color(0xFFF9F6EB)
@@ -46,6 +45,7 @@ fun RecoverPurchaseScreen(
     onIrAlHistorial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val appState = LocalAppUiState.current
     var folio by remember { mutableStateOf("CINE-2026-4A7F") }
     var email by remember { mutableStateOf("invitado@cineuabcs.mx") }
     var searchDone by remember { mutableStateOf(false) }
@@ -54,10 +54,7 @@ fun RecoverPurchaseScreen(
         if (!searchDone) {
             null
         } else {
-            mockPurchases.find {
-                it.folio.equals(folio.trim(), ignoreCase = true) &&
-                    it.email.equals(email.trim(), ignoreCase = true)
-            }
+            appState.recoverPurchase(folio, email)
         }
     }
 
@@ -174,7 +171,8 @@ private fun RecoveredPurchaseCard(
     purchase: MockPurchase,
     onVerBoleto: () -> Unit,
 ) {
-    val movie = mockMovies.find { it.id == purchase.movieId } ?: mockMovies.first()
+    val appState = LocalAppUiState.current
+    val movie = appState.movieForPurchase(purchase)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),

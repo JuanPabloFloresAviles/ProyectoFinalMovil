@@ -29,9 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockShowtimesByMovieId
-import com.example.proyectofinalmovil.services.mock.mockConcessions
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 // Colores de la pantalla (misma paleta del diseño)
@@ -51,24 +49,17 @@ fun SummaryScreen(
     onConfirmarCompra: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Datos mock para el resumen (película y función)
-    val pelicula = mockMovies.find { it.id == "estacion-7" } ?: mockMovies.first()
-    val funcion = mockShowtimesByMovieId["estacion-7"]?.firstOrNull()
-        ?: mockShowtimesByMovieId.values.first().first()
-
-    // Boletos mock (simulando 2 boletos seleccionados)
-    val asientosEjemplo = listOf("B7", "B8")
+    val appState = LocalAppUiState.current
+    val pelicula = appState.currentMovie()
+    val funcion = appState.currentShowtime()
+    val asientosEjemplo = appState.checkoutSeatLabels()
     val precioBoleto = funcion.price
-    val subtotalBoletos = asientosEjemplo.size * precioBoleto
-
-    // Dulcería mock (simulando 1 palomitas grandes y 2 refrescos)
-    val itemsDulceria = listOf(
-        DulceriaResumenItem(mockConcessions[0], 1),  // Palomitas Grandes x1
-        DulceriaResumenItem(mockConcessions[2], 2),  // Refresco x2
-    )
-    val subtotalDulceria = itemsDulceria.sumOf { item -> item.cantidad * item.producto.price }
-
-    val totalGeneral = subtotalBoletos + subtotalDulceria
+    val subtotalBoletos = appState.ticketTotal()
+    val itemsDulceria = appState.selectedConcessionItems().map { (producto, cantidad) ->
+        DulceriaResumenItem(producto, cantidad)
+    }
+    val subtotalDulceria = appState.concessionTotal()
+    val totalGeneral = appState.totalToPay()
 
     Column(
         modifier = modifier

@@ -6,10 +6,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
@@ -48,21 +45,16 @@ import com.example.proyectofinalmovil.screens.ChatListScreen
 import com.example.proyectofinalmovil.screens.PrivateChatScreen
 import com.example.proyectofinalmovil.screens.RecommendMovieScreen
 import com.example.proyectofinalmovil.screens.RecommendationsScreen
-import com.example.proyectofinalmovil.services.mock.MockChatMessage
-import com.example.proyectofinalmovil.services.mock.MockMovieRecommendation
-import com.example.proyectofinalmovil.services.mock.mockChatMessages
-import com.example.proyectofinalmovil.services.mock.mockIncomingRequestIds
-import com.example.proyectofinalmovil.services.mock.mockInitialFriendIds
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockOutgoingRequestIds
-import com.example.proyectofinalmovil.services.mock.mockRecommendations
-import com.example.proyectofinalmovil.services.mock.mockSocialUsers
+import com.example.proyectofinalmovil.services.state.AppUiState
+import com.example.proyectofinalmovil.services.state.ProvideAppUiState
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 
 @Composable
 fun AppRoot() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val appState = remember { AppUiState() }
 
     val tabItems = listOf(
         UiTabItem("Cartelera", AppIcons.Home),
@@ -72,38 +64,40 @@ fun AppRoot() {
         UiTabItem("Perfil", AppIcons.Profile),
     )
 
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                UiAppBar(
-                    title = currentTitle(currentRoute),
-                    navigationIcon = if (currentRoute == AppDestination.Splash.route) null else AppIcons.Back,
-                    actionIcon = AppIcons.Search,
-                    onNavigationClick = {
-                        if (!navController.popBackStack()) {
-                            navController.navigate(AppDestination.Splash.route)
-                        }
-                    },
-                )
-            },
-            bottomBar = {
-                if (currentRoute in bottomBarDestinations.map { it.route }) {
-                    UiTabBar(
-                        tabs = tabItems,
-                        selectedIndex = selectedTabIndex(currentRoute),
-                        onTabSelected = { index ->
-                            navController.navigate(bottomBarDestinations[index].route) {
-                                launchSingleTop = true
+    ProvideAppUiState(appUiState = appState) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                topBar = {
+                    UiAppBar(
+                        title = currentTitle(currentRoute),
+                        navigationIcon = if (currentRoute == AppDestination.Splash.route) null else AppIcons.Back,
+                        actionIcon = AppIcons.Search,
+                        onNavigationClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate(AppDestination.Splash.route)
                             }
                         },
                     )
-                }
-            },
-        ) { innerPadding ->
-            AppNavHost(
-                modifier = Modifier.padding(innerPadding),
-                navController = navController,
-            )
+                },
+                bottomBar = {
+                    if (currentRoute in bottomBarDestinations.map { it.route }) {
+                        UiTabBar(
+                            tabs = tabItems,
+                            selectedIndex = selectedTabIndex(currentRoute),
+                            onTabSelected = { index ->
+                                navController.navigate(bottomBarDestinations[index].route) {
+                                    launchSingleTop = true
+                                }
+                            },
+                        )
+                    }
+                },
+            ) { innerPadding ->
+                AppNavHost(
+                    modifier = Modifier.padding(innerPadding),
+                    navController = navController,
+                )
+            }
         }
     }
 }
@@ -113,27 +107,7 @@ private fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController,
 ) {
-    val friendIds = remember {
-        mutableStateListOf<String>().apply { addAll(mockInitialFriendIds) }
-    }
-    val incomingRequestIds = remember {
-        mutableStateListOf<String>().apply { addAll(mockIncomingRequestIds) }
-    }
-    val outgoingRequestIds = remember {
-        mutableStateListOf<String>().apply { addAll(mockOutgoingRequestIds) }
-    }
-    val chatMessages = remember {
-        mutableStateListOf<MockChatMessage>().apply { addAll(mockChatMessages) }
-    }
-    val recommendations = remember {
-        mutableStateListOf<MockMovieRecommendation>().apply { addAll(mockRecommendations) }
-    }
-    var selectedChatFriendId by remember {
-        mutableStateOf(mockInitialFriendIds.first())
-    }
-    var selectedRecommendationFriendId by remember {
-        mutableStateOf(mockInitialFriendIds.first())
-    }
+    val appState = LocalAppUiState.current
 
     NavHost(
         navController = navController,
@@ -160,13 +134,14 @@ private fun AppNavHost(
         composable(AppDestination.Browse.route) {
             BrowseScreen(
                 onMovieClick = { movieId ->
+                    appState.selectMovie(movieId)
                     navController.navigate(AppDestination.MovieDetail.route)
                 },
             )
         }
         composable(AppDestination.MovieDetail.route) {
             MovieDetailScreen(
-                movieId = "estacion-7",
+                movieId = appState.selectedMovieId,
                 onElegirFuncion = { movieId ->
                     navController.navigate(AppDestination.Showtimes.route)
                 },
@@ -177,15 +152,16 @@ private fun AppNavHost(
         }
         composable(AppDestination.Showtimes.route) {
             ShowtimesScreen(
-                movieId = "estacion-7",
+                movieId = appState.selectedMovieId,
                 onContinuarAButacas = { showtimeId ->
+                    appState.selectShowtime(showtimeId)
                     navController.navigate(AppDestination.Seats.route)
                 },
             )
         }
         composable(AppDestination.Seats.route) {
             SeatsScreen(
-                movieId = "estacion-7",
+                movieId = appState.selectedMovieId,
                 onContinuarADulceria = {
                     navController.navigate(AppDestination.Concessions.route)
                 },
@@ -204,6 +180,7 @@ private fun AppNavHost(
         composable(AppDestination.Summary.route) {
             SummaryScreen(
                 onConfirmarCompra = {
+                    appState.confirmCheckout()
                     navController.navigate(AppDestination.Confirmation.route)
                 },
             )
@@ -280,9 +257,9 @@ private fun AppNavHost(
         }
         composable(AppDestination.SocialHub.route) {
             SocialHubScreen(
-                friendsCount = friendIds.size,
-                incomingRequestsCount = incomingRequestIds.size,
-                outgoingRequestsCount = outgoingRequestIds.size,
+                friendsCount = appState.friendIds.size,
+                incomingRequestsCount = appState.incomingRequestIds.size,
+                outgoingRequestsCount = appState.outgoingRequestIds.size,
                 onVerSolicitudes = {
                     navController.navigate(AppDestination.Requests.route)
                 },
@@ -302,18 +279,17 @@ private fun AppNavHost(
         }
         composable(AppDestination.Requests.route) {
             RequestsScreen(
-                users = mockSocialUsers,
-                incomingRequestIds = incomingRequestIds,
-                outgoingRequestIds = outgoingRequestIds,
+                users = appState.socialUsers,
+                incomingRequestIds = appState.incomingRequestIds,
+                outgoingRequestIds = appState.outgoingRequestIds,
                 onAccept = { userId ->
-                    incomingRequestIds.remove(userId)
-                    if (userId !in friendIds) friendIds.add(userId)
+                    appState.acceptFriend(userId)
                 },
                 onReject = { userId ->
-                    incomingRequestIds.remove(userId)
+                    appState.rejectFriend(userId)
                 },
                 onCancel = { userId ->
-                    outgoingRequestIds.remove(userId)
+                    appState.cancelFriendRequest(userId)
                 },
                 onVerAmigos = {
                     navController.navigate(AppDestination.Friends.route)
@@ -325,7 +301,7 @@ private fun AppNavHost(
         }
         composable(AppDestination.Friends.route) {
             FriendsScreen(
-                friends = mockSocialUsers.filter { it.id in friendIds },
+                friends = appState.friendUsers(),
                 onBuscarPersonas = {
                     navController.navigate(AppDestination.SearchUsers.route)
                 },
@@ -333,28 +309,26 @@ private fun AppNavHost(
                     navController.navigate(AppDestination.Requests.route)
                 },
                 onOpenChat = { userId ->
-                    selectedChatFriendId = userId
+                    appState.selectedChatFriendId = userId
                     navController.navigate(AppDestination.PrivateChat.route)
                 },
                 onRecommendMovie = { userId ->
-                    selectedRecommendationFriendId = userId
+                    appState.selectedRecommendationFriendId = userId
                     navController.navigate(AppDestination.RecommendMovie.route)
                 },
             )
         }
         composable(AppDestination.SearchUsers.route) {
             SearchUsersScreen(
-                users = mockSocialUsers,
-                friendIds = friendIds,
-                incomingRequestIds = incomingRequestIds,
-                outgoingRequestIds = outgoingRequestIds,
+                users = appState.socialUsers,
+                friendIds = appState.friendIds,
+                incomingRequestIds = appState.incomingRequestIds,
+                outgoingRequestIds = appState.outgoingRequestIds,
                 onAdd = { userId ->
-                    if (userId !in outgoingRequestIds && userId !in friendIds) {
-                        outgoingRequestIds.add(userId)
-                    }
+                    appState.addFriendRequest(userId)
                 },
                 onCancel = { userId ->
-                    outgoingRequestIds.remove(userId)
+                    appState.cancelFriendRequest(userId)
                 },
                 onVerSolicitudes = {
                     navController.navigate(AppDestination.Requests.route)
@@ -366,10 +340,10 @@ private fun AppNavHost(
         }
         composable(AppDestination.ChatList.route) {
             ChatListScreen(
-                friends = mockSocialUsers.filter { it.id in friendIds },
-                messages = chatMessages,
+                friends = appState.friendUsers(),
+                messages = appState.chatMessages,
                 onOpenChat = { userId ->
-                    selectedChatFriendId = userId
+                    appState.selectedChatFriendId = userId
                     navController.navigate(AppDestination.PrivateChat.route)
                 },
                 onVerRecomendaciones = {
@@ -378,44 +352,27 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.PrivateChat.route) {
-            val friend = mockSocialUsers.find { it.id == selectedChatFriendId }
-                ?: mockSocialUsers.first()
+            val friend = appState.socialUsers.find { it.id == appState.selectedChatFriendId }
+                ?: appState.socialUsers.first()
             PrivateChatScreen(
                 friend = friend,
-                messages = chatMessages,
+                messages = appState.chatMessages,
                 onSendMessage = { text ->
-                    chatMessages.add(
-                        MockChatMessage(
-                            friendId = friend.id,
-                            sender = "Tú",
-                            text = text,
-                            time = "Ahora",
-                            isMine = true,
-                        ),
-                    )
+                    appState.sendChatMessage(friend.id, text)
                 },
                 onRecommendMovie = {
-                    selectedRecommendationFriendId = friend.id
+                    appState.selectedRecommendationFriendId = friend.id
                     navController.navigate(AppDestination.RecommendMovie.route)
                 },
             )
         }
         composable(AppDestination.RecommendMovie.route) {
-            val friends = mockSocialUsers.filter { it.id in friendIds }
+            val friends = appState.friendUsers()
             RecommendMovieScreen(
-                friends = friends.sortedBy { it.id != selectedRecommendationFriendId },
-                movies = mockMovies,
+                friends = friends.sortedBy { it.id != appState.selectedRecommendationFriendId },
+                movies = appState.movies,
                 onSendRecommendation = { friendId, movieId, note ->
-                    recommendations.add(
-                        MockMovieRecommendation(
-                            id = "rec-${recommendations.size + 1}",
-                            friendId = friendId,
-                            movieId = movieId,
-                            note = note,
-                            date = "Ahora",
-                            isMine = true,
-                        ),
-                    )
+                    appState.sendRecommendation(friendId, movieId, note)
                 },
                 onVerRecomendaciones = {
                     navController.navigate(AppDestination.Recommendations.route)
@@ -424,9 +381,9 @@ private fun AppNavHost(
         }
         composable(AppDestination.Recommendations.route) {
             RecommendationsScreen(
-                recommendations = recommendations,
-                users = mockSocialUsers,
-                movies = mockMovies,
+                recommendations = appState.recommendations,
+                users = appState.socialUsers,
+                movies = appState.movies,
                 onIrAChats = {
                     navController.navigate(AppDestination.ChatList.route)
                 },

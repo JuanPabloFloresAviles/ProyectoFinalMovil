@@ -39,8 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockShowtime
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockShowtimesByMovieId
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 import java.util.Calendar
@@ -66,8 +65,9 @@ fun ShowtimesScreen(
     onContinuarAButacas: (showtimeId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pelicula = mockMovies.find { it.id == movieId } ?: mockMovies.first()
-    val todasLasFunciones = mockShowtimesByMovieId[movieId] ?: mockShowtimesByMovieId.values.first()
+    val appState = LocalAppUiState.current
+    val pelicula = appState.movies.find { it.id == movieId } ?: appState.movies.first()
+    val todasLasFunciones = appState.showtimesFor(movieId)
     val dias = remember { generarDias() }
 
     var diaSeleccionado by remember { mutableStateOf(1) }
@@ -239,7 +239,7 @@ fun ShowtimesScreen(
                 text = "Continuar a butacas  ›",
                 onClick = {
                     funcionSeleccionada?.let {
-                        onContinuarAButacas("${movieId}_${it.time}")
+                        onContinuarAButacas("$movieId|${it.time}")
                     }
                 },
                 enabled = funcionSeleccionada != null,

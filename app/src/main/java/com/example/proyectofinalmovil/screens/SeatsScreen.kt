@@ -22,8 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,11 +32,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockShowtimesByMovieId
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
-// Colores de la pantalla de butacas según el diseño
 private val FondoCrema = Color(0xFFF9F6EB)
 private val Blanco = Color(0xFFFFFFFF)
 private val AzulAccion = Color(0xFF1067A6)
@@ -48,51 +44,30 @@ private val GrisOcupado = Color(0xFFF2EFE4)
 private val BordeAsiento = Color(0xFFD6D1C2)
 private val GrisTexto = Color(0xFF333333)
 
-// Filas de la sala (A-J)
 private val etiquetasFilas = listOf("A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
 
-// Cantidad de asientos por fila
-private const val ASIENTOS_POR_FILA = 8
-
-// Precio por boleto
-private const val PRECIO_BOLETO = 45
-
-/**
- * Pantalla de selección de butacas.
- * Muestra el mapa de asientos de la sala y permite al usuario
- * seleccionar o deseleccionar butacas antes de continuar a la dulcería.
- */
 @Composable
 fun SeatsScreen(
     movieId: String,
     onContinuarADulceria: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Datos de la película y función
-    val pelicula = mockMovies.find { it.id == movieId } ?: mockMovies.first()
-    val funcion = mockShowtimesByMovieId[movieId]?.firstOrNull()
-        ?: mockShowtimesByMovieId.values.first().first()
-
-    // Asientos seleccionados por el usuario (pares fila-columna)
-    val seleccionados = remember { mutableStateListOf<Pair<Int, Int>>() }
-
-    // Subtotal basado en la cantidad de asientos seleccionados
-    val subtotal = seleccionados.size * PRECIO_BOLETO
+    val appState = LocalAppUiState.current
+    val pelicula = appState.movies.find { it.id == movieId } ?: appState.movies.first()
+    val funcion = appState.currentShowtime()
+    val seleccionados = appState.selectedSeatIds
+    val subtotal = appState.ticketTotal()
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(FondoCrema),
     ) {
-
-        // Contenido con scroll
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
         ) {
-
-            // Encabezado
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -116,7 +91,6 @@ fun SeatsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Indicador de pantalla
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -141,7 +115,6 @@ fun SeatsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Mapa de asientos con scroll horizontal para pantallas pequeñas
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -154,7 +127,6 @@ fun SeatsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        // Etiqueta de fila (izquierda)
                         Text(
                             text = etiqueta,
                             style = MaterialTheme.typography.bodySmall,
@@ -164,34 +136,24 @@ fun SeatsScreen(
                             textAlign = TextAlign.Center,
                         )
 
-                        // Asientos de esta fila
-                        for (indiceColumna in 0 until ASIENTOS_POR_FILA) {
-                            val estaSeleccionado = seleccionados.contains(indiceFila to indiceColumna)
+                        for (indiceColumna in 0 until 8) {
+                            val nombreAsiento = "${etiquetasFilas[indiceFila]}${indiceColumna + 1}"
+                            val estaSeleccionado = nombreAsiento in seleccionados
 
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(
-                                        if (estaSeleccionado) AzulAccion else Blanco
-                                    )
+                                    .background(if (estaSeleccionado) AzulAccion else Blanco)
                                     .border(
                                         width = 1.dp,
                                         color = if (estaSeleccionado) AzulAccion else BordeAsiento,
                                         shape = RoundedCornerShape(6.dp),
                                     )
-                                    .clickable {
-                                        val par = indiceFila to indiceColumna
-                                        if (seleccionados.contains(par)) {
-                                            seleccionados.remove(par)
-                                        } else {
-                                            seleccionados.add(par)
-                                        }
-                                    },
+                                    .clickable { appState.toggleSeat(nombreAsiento) },
                             )
                         }
 
-                        // Etiqueta de fila (derecha)
                         Text(
                             text = etiqueta,
                             style = MaterialTheme.typography.bodySmall,
@@ -206,7 +168,6 @@ fun SeatsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Leyenda
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -222,7 +183,6 @@ fun SeatsScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Barra inferior fija
         Surface(
             shadowElevation = 8.dp,
             color = FondoCrema,
@@ -232,7 +192,6 @@ fun SeatsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
-                // Chips de asientos seleccionados
                 if (seleccionados.isNotEmpty()) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -241,42 +200,36 @@ fun SeatsScreen(
                             .horizontalScroll(rememberScrollState())
                             .padding(bottom = 10.dp),
                     ) {
-                        seleccionados.sortedWith(compareBy({ it.first }, { it.second }))
-                            .forEach { (fila, columna) ->
-                                val nombreAsiento = "${etiquetasFilas[fila]}${columna + 1}"
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .background(AzulAccion)
-                                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = nombreAsiento,
-                                        color = Blanco,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
+                        seleccionados.sorted().forEach { nombreAsiento ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(AzulAccion)
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = nombreAsiento,
+                                    color = Blanco,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                )
                             }
+                        }
                     }
                 }
 
-                // Subtotal y botón
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Info de boletos y precio
                     Column {
                         Text(
                             text = "${seleccionados.size} BOLETOS",
                             style = MaterialTheme.typography.labelSmall,
                             color = GrisTexto.copy(alpha = 0.6f),
                         )
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                        ) {
+                        Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = "$$subtotal",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -295,7 +248,6 @@ fun SeatsScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // Botón para continuar
                     UiPrimaryButton(
                         text = "Continuar a dulcería",
                         onClick = onContinuarADulceria,
@@ -309,9 +261,6 @@ fun SeatsScreen(
     }
 }
 
-/**
- * Indicador individual de la leyenda del mapa de asientos.
- */
 @Composable
 private fun LeyendaAsiento(
     color: Color,

@@ -36,8 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiGhostButton
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockPurchases
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 // Colores de la pantalla (misma paleta del diseño)
@@ -58,8 +57,9 @@ fun TicketQrScreen(
     onVolverACartelera: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val compra = mockPurchases.first()
-    val pelicula = mockMovies.find { it.id == compra.movieId } ?: mockMovies.first()
+    val appState = LocalAppUiState.current
+    val compra = appState.activePurchase()
+    val pelicula = appState.movieForPurchase(compra)
 
     // Patrón QR simulado (cuadrícula de 11x11)
     val patronQr = remember { generarPatronQr() }

@@ -56,8 +56,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.services.mock.MockMovie
-import com.example.proyectofinalmovil.services.mock.generosFiltro
-import com.example.proyectofinalmovil.services.mock.mockMovies
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
@@ -66,15 +65,16 @@ fun BrowseScreen(
     onMovieClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val destacada = mockMovies.first { it.isFeatured }
+    val appState = LocalAppUiState.current
+    val destacada = appState.movies.first { it.isFeatured }
 
     var filtroActivo by remember { mutableStateOf("Estrenos") }
 
     val peliculasFiltradas = remember(filtroActivo) {
         when (filtroActivo) {
-            "Todo" -> mockMovies.filter { !it.isFeatured }
-            "Estrenos" -> mockMovies.filter { it.isNew && !it.isFeatured }
-            else -> mockMovies.filter { it.genre == filtroActivo && !it.isFeatured }
+            "Todo" -> appState.movies.filter { !it.isFeatured }
+            "Estrenos" -> appState.movies.filter { it.isNew && !it.isFeatured }
+            else -> appState.movies.filter { it.genre == filtroActivo && !it.isFeatured }
         }
     }
 
@@ -146,7 +146,7 @@ fun BrowseScreen(
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            generosFiltro.forEach { genero ->
+            appState.genres.forEach { genero ->
                 FilterChip(
                     selected = genero == filtroActivo,
                     onClick = { filtroActivo = genero },

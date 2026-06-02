@@ -44,9 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockMovie
-import com.example.proyectofinalmovil.services.mock.mockCast
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockSynopsis
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
@@ -57,9 +55,10 @@ fun MovieDetailScreen(
     onVerResenas: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pelicula = mockMovies.find { it.id == movieId } ?: mockMovies.first()
-    val sinopsis = mockSynopsis[movieId] ?: "Sinopsis no disponible."
-    val reparto = mockCast[movieId] ?: emptyList()
+    val appState = LocalAppUiState.current
+    val pelicula = appState.movies.find { it.id == movieId } ?: appState.movies.first()
+    val sinopsis = appState.synopsisFor(movieId)
+    val reparto = appState.castFor(movieId)
 
     var sinopsisExpandida by remember { mutableStateOf(false) }
 

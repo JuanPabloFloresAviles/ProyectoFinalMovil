@@ -28,8 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockReview
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockReviews
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 private val FondoCrema = Color(0xFFF9F6EB)
@@ -44,8 +43,9 @@ fun ReviewsScreen(
     onVerCartelera: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val myReviews = mockReviews.filter { it.isMine }
-    val communityReviews = mockReviews.filterNot { it.isMine }
+    val appState = LocalAppUiState.current
+    val myReviews = appState.reviews.filter { it.isMine }
+    val communityReviews = appState.reviews.filterNot { it.isMine }
 
     Column(
         modifier = modifier
@@ -135,7 +135,8 @@ private fun SectionTitle(text: String) {
 
 @Composable
 private fun ReviewCard(review: MockReview) {
-    val movie = mockMovies.find { it.id == review.movieId } ?: mockMovies.first()
+    val appState = LocalAppUiState.current
+    val movie = appState.movies.find { it.id == review.movieId } ?: appState.movies.first()
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
