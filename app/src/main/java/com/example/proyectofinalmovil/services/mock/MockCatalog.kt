@@ -347,6 +347,66 @@ val mockInitialFriendIds = listOf("daniel-rojas", "mariana-lopez")
 val mockIncomingRequestIds = listOf("sofia-tamez")
 val mockOutgoingRequestIds = listOf("luis-ibarra")
 
+data class MockChatMessage(
+    val friendId: String,
+    val sender: String,
+    val text: String,
+    val time: String,
+    val isMine: Boolean,
+)
+
+val mockChatMessages = listOf(
+    MockChatMessage(
+        friendId = "daniel-rojas",
+        sender = "Daniel",
+        text = "¿Ya viste que Estación 7 tiene función a las 18:10?",
+        time = "10:15",
+        isMine = false,
+    ),
+    MockChatMessage(
+        friendId = "daniel-rojas",
+        sender = "Tú",
+        text = "Sí, esa hora me queda perfecta. La guardo para hoy.",
+        time = "10:18",
+        isMine = true,
+    ),
+    MockChatMessage(
+        friendId = "mariana-lopez",
+        sender = "Mariana",
+        text = "Aurora 3024 se ve buena para sala grande.",
+        time = "Ayer",
+        isMine = false,
+    ),
+)
+
+data class MockMovieRecommendation(
+    val id: String,
+    val friendId: String,
+    val movieId: String,
+    val note: String,
+    val date: String,
+    val isMine: Boolean,
+)
+
+val mockRecommendations = listOf(
+    MockMovieRecommendation(
+        id = "rec-1",
+        friendId = "mariana-lopez",
+        movieId = "aurora-3024",
+        note = "Creo que te va a gustar por el ambiente de ciencia ficción.",
+        date = "Hoy",
+        isMine = false,
+    ),
+    MockMovieRecommendation(
+        id = "rec-2",
+        friendId = "daniel-rojas",
+        movieId = "estacion-7",
+        note = "Va con tu gusto por los thrillers lentos.",
+        date = "Ayer",
+        isMine = true,
+    ),
+)
+
 val mockSynopsis: Map<String, String> = mapOf(
     "estacion-7" to "En una remota estación ferroviaria del altiplano, siete desconocidos esperan un tren que tal vez nunca llegue. A medida que la noche avanza, descubren que sus historias están más entrelazadas de lo que imaginaban.",
     "el-ultimo-faro" to "Un marinero retirado regresa a su pueblo natal para encontrarse con un faro que lleva décadas apagado. Lo que descubre ahí cambiará su comprensión de la familia y el tiempo.",

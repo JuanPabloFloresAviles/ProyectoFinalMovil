@@ -50,6 +50,8 @@ fun SocialHubScreen(
     onVerSolicitudes: () -> Unit,
     onVerAmigos: () -> Unit,
     onBuscarPersonas: () -> Unit,
+    onVerChats: () -> Unit,
+    onVerRecomendaciones: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -94,6 +96,20 @@ fun SocialHubScreen(
             body = "Descubre estudiantes con gustos similares.",
             primaryText = "Buscar usuarios",
             onPrimaryClick = onBuscarPersonas,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        ActionCard(
+            title = "Chats",
+            body = "Abre conversaciones privadas con tus amigos.",
+            primaryText = "Ver chats",
+            onPrimaryClick = onVerChats,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        ActionCard(
+            title = "Recomendaciones",
+            body = "Consulta películas compartidas por tu red.",
+            primaryText = "Ver recomendaciones",
+            onPrimaryClick = onVerRecomendaciones,
         )
     }
 }
@@ -176,6 +192,8 @@ fun FriendsScreen(
     friends: List<MockSocialUser>,
     onBuscarPersonas: () -> Unit,
     onVerSolicitudes: () -> Unit,
+    onOpenChat: (String) -> Unit,
+    onRecommendMovie: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -202,8 +220,10 @@ fun FriendsScreen(
                 friends.forEach { user ->
                     SocialUserCard(
                         user = user,
-                        primaryText = if (user.isOnline) "En línea" else "Ver perfil",
-                        onPrimaryClick = {},
+                        primaryText = "Abrir chat",
+                        secondaryText = "Recomendar película",
+                        onPrimaryClick = { onOpenChat(user.id) },
+                        onSecondaryClick = { onRecommendMovie(user.id) },
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -540,6 +560,8 @@ private fun SocialHubScreenPreview() {
             onVerSolicitudes = {},
             onVerAmigos = {},
             onBuscarPersonas = {},
+            onVerChats = {},
+            onVerRecomendaciones = {},
         )
     }
 }
