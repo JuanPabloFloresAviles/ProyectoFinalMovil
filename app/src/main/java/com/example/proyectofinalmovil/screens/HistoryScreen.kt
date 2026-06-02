@@ -25,8 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockPurchase
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockPurchases
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 private val FondoCrema = Color(0xFFF9F6EB)
@@ -41,6 +40,8 @@ fun HistoryScreen(
     onRecuperarCompra: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val appState = LocalAppUiState.current
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -74,9 +75,10 @@ fun HistoryScreen(
             )
             Spacer(modifier = Modifier.height(18.dp))
 
-            mockPurchases.forEach { purchase ->
+            appState.purchases.forEach { purchase ->
                 PurchaseCard(
                     purchase = purchase,
+                    movieTitle = appState.movieForPurchase(purchase).title,
                     onVerBoleto = onVerBoleto,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -104,9 +106,9 @@ fun HistoryScreen(
 @Composable
 private fun PurchaseCard(
     purchase: MockPurchase,
+    movieTitle: String,
     onVerBoleto: () -> Unit,
 ) {
-    val movie = mockMovies.find { it.id == purchase.movieId } ?: mockMovies.first()
     val statusColor = if (purchase.status == "Activa") AzulAccion else GrisTexto.copy(alpha = 0.55f)
 
     Surface(
@@ -124,7 +126,7 @@ private fun PurchaseCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = movie.title,
+                        text = movieTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = GrisTexto,

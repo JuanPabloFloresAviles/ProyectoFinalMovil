@@ -34,8 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiGhostButton
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockShowtimesByMovieId
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 // Colores de la pantalla (misma paleta del diseño)
@@ -55,12 +54,13 @@ fun ConfirmationScreen(
     onVolverACartelera: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Datos mock de la compra
-    val pelicula = mockMovies.find { it.id == "estacion-7" } ?: mockMovies.first()
-    val funcion = mockShowtimesByMovieId["estacion-7"]?.firstOrNull()
-        ?: mockShowtimesByMovieId.values.first().first()
-    val asientos = listOf("B7", "B8")
-    val folio = "CINE-2026-4A7F"
+    val appState = LocalAppUiState.current
+    val compra = appState.activePurchase()
+    val pelicula = appState.movieForPurchase(compra)
+    val funcion = appState.showtimesFor(compra.movieId).firstOrNull { it.time == compra.time }
+        ?: appState.showtimesFor(compra.movieId).first()
+    val asientos = compra.seats
+    val folio = compra.folio
 
     Column(
         modifier = modifier

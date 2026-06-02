@@ -36,9 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
-import com.example.proyectofinalmovil.services.mock.mockPurchases
-import com.example.proyectofinalmovil.services.mock.mockReviews
-import com.example.proyectofinalmovil.services.mock.mockUserProfile
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 private val FondoCrema = Color(0xFFF9F6EB)
@@ -54,11 +52,12 @@ fun ProfileScreen(
     onRecuperarCompra: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val appState = LocalAppUiState.current
     var editing by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf(mockUserProfile.name) }
-    var email by remember { mutableStateOf(mockUserProfile.email) }
-    var phone by remember { mutableStateOf(mockUserProfile.phone) }
-    var favoriteGenre by remember { mutableStateOf(mockUserProfile.favoriteGenre) }
+    var name by remember { mutableStateOf(appState.userProfile.name) }
+    var email by remember { mutableStateOf(appState.userProfile.email) }
+    var phone by remember { mutableStateOf(appState.userProfile.phone) }
+    var favoriteGenre by remember { mutableStateOf(appState.userProfile.favoriteGenre) }
 
     Column(
         modifier = modifier
@@ -72,6 +71,7 @@ fun ProfileScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             ProfileHeader(
+                initials = appState.userProfile.initials,
                 name = name,
                 email = email,
                 favoriteGenre = favoriteGenre,
@@ -82,17 +82,17 @@ fun ProfileScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatCard(
                     label = "Compras",
-                    value = mockPurchases.size.toString(),
+                    value = appState.purchases.size.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 StatCard(
                     label = "Reseñas",
-                    value = mockReviews.count { it.isMine }.toString(),
+                    value = appState.reviews.count { it.isMine }.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 StatCard(
                     label = "Miembro",
-                    value = "2026",
+                    value = appState.userProfile.memberSince.takeLast(4),
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -145,9 +145,9 @@ fun ProfileScreen(
                         ProfileInfoRow("Nombre", name)
                         ProfileInfoRow("Correo", email)
                         ProfileInfoRow("Teléfono", phone)
-                        ProfileInfoRow("Matrícula", mockUserProfile.studentId)
+                        ProfileInfoRow("Matrícula", appState.userProfile.studentId)
                         ProfileInfoRow("Género favorito", favoriteGenre)
-                        ProfileInfoRow("Miembro desde", mockUserProfile.memberSince)
+                        ProfileInfoRow("Miembro desde", appState.userProfile.memberSince)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -180,6 +180,7 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileHeader(
+    initials: String,
     name: String,
     email: String,
     favoriteGenre: String,
@@ -207,7 +208,7 @@ private fun ProfileHeader(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = mockUserProfile.initials,
+                    text = initials,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,

@@ -22,8 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
-import com.example.proyectofinalmovil.services.mock.mockConcessions
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 // Colores de la pantalla (misma paleta del diseño)
@@ -57,14 +55,10 @@ fun ConcessionsScreen(
     onSaltarDulceria: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Cantidades seleccionadas por producto (id -> cantidad)
-    val cantidades = remember { mutableStateMapOf<String, Int>() }
-
-    // Total de productos agregados
+    val appState = LocalAppUiState.current
+    val cantidades = appState.concessionQuantities
     val totalProductos = cantidades.values.sum()
-    val totalMonto = mockConcessions.sumOf { item ->
-        (cantidades[item.id] ?: 0) * item.price
-    }
+    val totalMonto = appState.concessionTotal()
 
     Column(
         modifier = modifier
@@ -109,17 +103,17 @@ fun ConcessionsScreen(
                 modifier = Modifier.padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                mockConcessions.forEach { item ->
+                appState.concessions.forEach { item ->
                     val cantidad = cantidades[item.id] ?: 0
                     TarjetaProducto(
                         item = item,
                         cantidad = cantidad,
                         onIncrementar = {
-                            cantidades[item.id] = cantidad + 1
+                            appState.setConcessionQuantity(item.id, cantidad + 1)
                         },
                         onDecrementar = {
                             if (cantidad > 0) {
-                                cantidades[item.id] = cantidad - 1
+                                appState.setConcessionQuantity(item.id, cantidad - 1)
                             }
                         },
                     )
