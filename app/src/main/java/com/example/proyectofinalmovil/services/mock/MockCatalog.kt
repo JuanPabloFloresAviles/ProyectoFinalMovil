@@ -163,6 +163,250 @@ val mockShowtimesByMovieId: Map<String, List<MockShowtime>> = mapOf(
     ),
 )
 
+data class MockPurchase(
+    val folio: String,
+    val email: String,
+    val movieId: String,
+    val date: String,
+    val time: String,
+    val room: String,
+    val seats: List<String>,
+    val status: String,
+    val ticketTotal: Int,
+    val concessionsTotal: Int,
+) {
+    val total: Int
+        get() = ticketTotal + concessionsTotal
+}
+
+val mockPurchases = listOf(
+    MockPurchase(
+        folio = "CINE-2026-4A7F",
+        email = "invitado@cineuabcs.mx",
+        movieId = "estacion-7",
+        date = "28 May 2026",
+        time = "18:10",
+        room = "Sala 2",
+        seats = listOf("B7", "B8"),
+        status = "Activa",
+        ticketTotal = 90,
+        concessionsTotal = 140,
+    ),
+    MockPurchase(
+        folio = "CINE-2026-9K2M",
+        email = "alan@uabcs.mx",
+        movieId = "el-ultimo-faro",
+        date = "22 May 2026",
+        time = "19:30",
+        room = "Sala 1",
+        seats = listOf("D4"),
+        status = "Usada",
+        ticketTotal = 45,
+        concessionsTotal = 65,
+    ),
+    MockPurchase(
+        folio = "CINE-2026-6R8Q",
+        email = "alan@uabcs.mx",
+        movieId = "aurora-3024",
+        date = "14 May 2026",
+        time = "21:00",
+        room = "Sala 2",
+        seats = listOf("F10", "F11", "F12"),
+        status = "Usada",
+        ticketTotal = 135,
+        concessionsTotal = 0,
+    ),
+)
+
+data class MockUserProfile(
+    val name: String,
+    val email: String,
+    val phone: String,
+    val studentId: String,
+    val favoriteGenre: String,
+    val memberSince: String,
+    val initials: String,
+)
+
+val mockUserProfile = MockUserProfile(
+    name = "Alan Urías",
+    email = "alan@uabcs.mx",
+    phone = "612 123 4567",
+    studentId = "UABCS-2026-014",
+    favoriteGenre = "Thriller",
+    memberSince = "Mayo 2026",
+    initials = "AU",
+)
+
+data class MockReview(
+    val id: String,
+    val movieId: String,
+    val author: String,
+    val rating: Int,
+    val date: String,
+    val comment: String,
+    val isMine: Boolean = false,
+)
+
+val mockReviews = listOf(
+    MockReview(
+        id = "review-1",
+        movieId = "estacion-7",
+        author = "Alan Urías",
+        rating = 5,
+        date = "29 May 2026",
+        comment = "La tensión crece muy bien y el final deja buen tema para platicar saliendo de la sala.",
+        isMine = true,
+    ),
+    MockReview(
+        id = "review-2",
+        movieId = "el-ultimo-faro",
+        author = "Mariana López",
+        rating = 4,
+        date = "23 May 2026",
+        comment = "Me gustó el ritmo tranquilo y la fotografía. Es de esas películas que se sienten personales.",
+    ),
+    MockReview(
+        id = "review-3",
+        movieId = "aurora-3024",
+        author = "Daniel Rojas",
+        rating = 4,
+        date = "15 May 2026",
+        comment = "Buena experiencia para sala grande. La historia tarda un poco en arrancar, pero el ambiente funciona.",
+    ),
+)
+
+data class MockSocialUser(
+    val id: String,
+    val name: String,
+    val initials: String,
+    val career: String,
+    val favoriteGenre: String,
+    val bio: String,
+    val avatarStart: Color,
+    val avatarEnd: Color,
+    val isOnline: Boolean = false,
+)
+
+val mockSocialUsers = listOf(
+    MockSocialUser(
+        id = "daniel-rojas",
+        name = "Daniel Rojas",
+        initials = "DR",
+        career = "Ingeniería en Software",
+        favoriteGenre = "Thriller",
+        bio = "Busca películas intensas para comentar después de clase.",
+        avatarStart = Color(0xFFD8454A),
+        avatarEnd = Color(0xFF781820),
+        isOnline = true,
+    ),
+    MockSocialUser(
+        id = "mariana-lopez",
+        name = "Mariana López",
+        initials = "ML",
+        career = "Comunicación",
+        favoriteGenre = "Sci-Fi",
+        bio = "Fan de la ciencia ficción y de las funciones nocturnas.",
+        avatarStart = Color(0xFF3A6A8C),
+        avatarEnd = Color(0xFF1A3A5A),
+        isOnline = true,
+    ),
+    MockSocialUser(
+        id = "sofia-tamez",
+        name = "Sofía Tamez",
+        initials = "ST",
+        career = "Biología Marina",
+        favoriteGenre = "Documental",
+        bio = "Tiene una lista enorme de documentales pendientes.",
+        avatarStart = Color(0xFF4AB07A),
+        avatarEnd = Color(0xFF1F5A3D),
+    ),
+    MockSocialUser(
+        id = "luis-ibarra",
+        name = "Luis Ibarra",
+        initials = "LI",
+        career = "Administración",
+        favoriteGenre = "Animación",
+        bio = "Siempre encuentra funciones familiares y estrenos ligeros.",
+        avatarStart = Color(0xFFFFA84A),
+        avatarEnd = Color(0xFFC06A12),
+    ),
+    MockSocialUser(
+        id = "camila-vega",
+        name = "Camila Vega",
+        initials = "CV",
+        career = "Arquitectura",
+        favoriteGenre = "Drama",
+        bio = "Le gustan las historias visuales y los finales agridulces.",
+        avatarStart = Color(0xFF8C5AD8),
+        avatarEnd = Color(0xFF3F236F),
+    ),
+)
+
+val mockInitialFriendIds = listOf("daniel-rojas", "mariana-lopez")
+val mockIncomingRequestIds = listOf("sofia-tamez")
+val mockOutgoingRequestIds = listOf("luis-ibarra")
+
+data class MockChatMessage(
+    val friendId: String,
+    val sender: String,
+    val text: String,
+    val time: String,
+    val isMine: Boolean,
+)
+
+val mockChatMessages = listOf(
+    MockChatMessage(
+        friendId = "daniel-rojas",
+        sender = "Daniel",
+        text = "¿Ya viste que Estación 7 tiene función a las 18:10?",
+        time = "10:15",
+        isMine = false,
+    ),
+    MockChatMessage(
+        friendId = "daniel-rojas",
+        sender = "Tú",
+        text = "Sí, esa hora me queda perfecta. La guardo para hoy.",
+        time = "10:18",
+        isMine = true,
+    ),
+    MockChatMessage(
+        friendId = "mariana-lopez",
+        sender = "Mariana",
+        text = "Aurora 3024 se ve buena para sala grande.",
+        time = "Ayer",
+        isMine = false,
+    ),
+)
+
+data class MockMovieRecommendation(
+    val id: String,
+    val friendId: String,
+    val movieId: String,
+    val note: String,
+    val date: String,
+    val isMine: Boolean,
+)
+
+val mockRecommendations = listOf(
+    MockMovieRecommendation(
+        id = "rec-1",
+        friendId = "mariana-lopez",
+        movieId = "aurora-3024",
+        note = "Creo que te va a gustar por el ambiente de ciencia ficción.",
+        date = "Hoy",
+        isMine = false,
+    ),
+    MockMovieRecommendation(
+        id = "rec-2",
+        friendId = "daniel-rojas",
+        movieId = "estacion-7",
+        note = "Va con tu gusto por los thrillers lentos.",
+        date = "Ayer",
+        isMine = true,
+    ),
+)
+
 val mockSynopsis: Map<String, String> = mapOf(
     "estacion-7" to "En una remota estación ferroviaria del altiplano, siete desconocidos esperan un tren que tal vez nunca llegue. A medida que la noche avanza, descubren que sus historias están más entrelazadas de lo que imaginaban.",
     "el-ultimo-faro" to "Un marinero retirado regresa a su pueblo natal para encontrarse con un faro que lleva décadas apagado. Lo que descubre ahí cambiará su comprensión de la familia y el tiempo.",

@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockShowtimesByMovieId
+import com.example.proyectofinalmovil.services.mock.mockPurchases
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 // Colores de la pantalla (misma paleta del diseño)
@@ -54,15 +54,12 @@ private val BordeCard = Color(0xFFD6D1C2)
 @Composable
 fun TicketQrScreen(
     onIrAlHistorial: () -> Unit,
+    onRecuperarCompra: () -> Unit,
     onVolverACartelera: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Datos mock del boleto
-    val pelicula = mockMovies.find { it.id == "estacion-7" } ?: mockMovies.first()
-    val funcion = mockShowtimesByMovieId["estacion-7"]?.firstOrNull()
-        ?: mockShowtimesByMovieId.values.first().first()
-    val asientos = listOf("B7", "B8")
-    val folio = "CINE-2026-4A7F"
+    val compra = mockPurchases.first()
+    val pelicula = mockMovies.find { it.id == compra.movieId } ?: mockMovies.first()
 
     // Patrón QR simulado (cuadrícula de 11x11)
     val patronQr = remember { generarPatronQr() }
@@ -131,8 +128,8 @@ fun TicketQrScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        DatoBoleto(etiqueta = "Fecha", valor = "28 May 2026")
-                        DatoBoleto(etiqueta = "Horario", valor = funcion.time, alinearDerecha = true)
+                        DatoBoleto(etiqueta = "Fecha", valor = compra.date)
+                        DatoBoleto(etiqueta = "Horario", valor = compra.time, alinearDerecha = true)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -141,8 +138,8 @@ fun TicketQrScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        DatoBoleto(etiqueta = "Sala", valor = funcion.room)
-                        DatoBoleto(etiqueta = "Asientos", valor = asientos.joinToString(", "), alinearDerecha = true)
+                        DatoBoleto(etiqueta = "Sala", valor = compra.room)
+                        DatoBoleto(etiqueta = "Asientos", valor = compra.seats.joinToString(", "), alinearDerecha = true)
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
@@ -210,7 +207,7 @@ fun TicketQrScreen(
 
                     // Folio
                     Text(
-                        text = "Folio: $folio",
+                        text = "Folio: ${compra.folio}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = AzulAccion,
@@ -242,6 +239,13 @@ fun TicketQrScreen(
                 UiPrimaryButton(
                     text = "Ir al historial",
                     onClick = onIrAlHistorial,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                UiGhostButton(
+                    text = "Recuperar compra",
+                    onClick = onRecuperarCompra,
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -329,6 +333,7 @@ private fun TicketQrScreenPreview() {
     ProyectoFinalMovilTheme {
         TicketQrScreen(
             onIrAlHistorial = {},
+            onRecuperarCompra = {},
             onVolverACartelera = {},
         )
     }

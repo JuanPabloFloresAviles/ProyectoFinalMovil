@@ -6,6 +6,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
@@ -32,6 +36,27 @@ import com.example.proyectofinalmovil.screens.ConcessionsScreen
 import com.example.proyectofinalmovil.screens.SummaryScreen
 import com.example.proyectofinalmovil.screens.ConfirmationScreen
 import com.example.proyectofinalmovil.screens.TicketQrScreen
+import com.example.proyectofinalmovil.screens.HistoryScreen
+import com.example.proyectofinalmovil.screens.RecoverPurchaseScreen
+import com.example.proyectofinalmovil.screens.ProfileScreen
+import com.example.proyectofinalmovil.screens.ReviewsScreen
+import com.example.proyectofinalmovil.screens.SocialHubScreen
+import com.example.proyectofinalmovil.screens.RequestsScreen
+import com.example.proyectofinalmovil.screens.FriendsScreen
+import com.example.proyectofinalmovil.screens.SearchUsersScreen
+import com.example.proyectofinalmovil.screens.ChatListScreen
+import com.example.proyectofinalmovil.screens.PrivateChatScreen
+import com.example.proyectofinalmovil.screens.RecommendMovieScreen
+import com.example.proyectofinalmovil.screens.RecommendationsScreen
+import com.example.proyectofinalmovil.services.mock.MockChatMessage
+import com.example.proyectofinalmovil.services.mock.MockMovieRecommendation
+import com.example.proyectofinalmovil.services.mock.mockChatMessages
+import com.example.proyectofinalmovil.services.mock.mockIncomingRequestIds
+import com.example.proyectofinalmovil.services.mock.mockInitialFriendIds
+import com.example.proyectofinalmovil.services.mock.mockMovies
+import com.example.proyectofinalmovil.services.mock.mockOutgoingRequestIds
+import com.example.proyectofinalmovil.services.mock.mockRecommendations
+import com.example.proyectofinalmovil.services.mock.mockSocialUsers
 
 @Composable
 fun AppRoot() {
@@ -88,6 +113,28 @@ private fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController,
 ) {
+    val friendIds = remember {
+        mutableStateListOf<String>().apply { addAll(mockInitialFriendIds) }
+    }
+    val incomingRequestIds = remember {
+        mutableStateListOf<String>().apply { addAll(mockIncomingRequestIds) }
+    }
+    val outgoingRequestIds = remember {
+        mutableStateListOf<String>().apply { addAll(mockOutgoingRequestIds) }
+    }
+    val chatMessages = remember {
+        mutableStateListOf<MockChatMessage>().apply { addAll(mockChatMessages) }
+    }
+    val recommendations = remember {
+        mutableStateListOf<MockMovieRecommendation>().apply { addAll(mockRecommendations) }
+    }
+    var selectedChatFriendId by remember {
+        mutableStateOf(mockInitialFriendIds.first())
+    }
+    var selectedRecommendationFriendId by remember {
+        mutableStateOf(mockInitialFriendIds.first())
+    }
+
     NavHost(
         navController = navController,
         startDestination = AppDestination.Splash.route,
@@ -178,6 +225,9 @@ private fun AppNavHost(
                 onIrAlHistorial = {
                     navController.navigate(AppDestination.History.route)
                 },
+                onRecuperarCompra = {
+                    navController.navigate(AppDestination.RecoverPurchase.route)
+                },
                 onVolverACartelera = {
                     navController.navigate(AppDestination.Browse.route) {
                         popUpTo(AppDestination.Browse.route) { inclusive = true }
@@ -186,146 +236,203 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.History.route) {
-            PlaceholderScreen(
-                current = AppDestination.History,
-                primaryDestinations = listOf(
-                    AppDestination.RecoverPurchase,
-                    AppDestination.TicketQr,
-                ),
-                secondaryDestinations = listOf(AppDestination.Profile),
-                onNavigate = { navController.navigate(it.route) },
+            HistoryScreen(
+                onVerBoleto = {
+                    navController.navigate(AppDestination.TicketQr.route)
+                },
+                onRecuperarCompra = {
+                    navController.navigate(AppDestination.RecoverPurchase.route)
+                },
             )
         }
         composable(AppDestination.RecoverPurchase.route) {
-            PlaceholderScreen(
-                current = AppDestination.RecoverPurchase,
-                primaryDestinations = listOf(
-                    AppDestination.History,
-                    AppDestination.Login,
-                ),
-                secondaryDestinations = listOf(AppDestination.Profile),
-                onNavigate = { navController.navigate(it.route) },
+            RecoverPurchaseScreen(
+                onVerBoleto = {
+                    navController.navigate(AppDestination.TicketQr.route)
+                },
+                onIrAlHistorial = {
+                    navController.navigate(AppDestination.History.route)
+                },
             )
         }
         composable(AppDestination.Reviews.route) {
-            PlaceholderScreen(
-                current = AppDestination.Reviews,
-                primaryDestinations = listOf(
-                    AppDestination.MovieDetail,
-                    AppDestination.Browse,
-                ),
-                secondaryDestinations = listOf(AppDestination.Profile),
-                onNavigate = { navController.navigate(it.route) },
+            ReviewsScreen(
+                onVolverAPerfil = {
+                    navController.navigate(AppDestination.Profile.route)
+                },
+                onVerCartelera = {
+                    navController.navigate(AppDestination.Browse.route)
+                },
             )
         }
         composable(AppDestination.Profile.route) {
-            PlaceholderScreen(
-                current = AppDestination.Profile,
-                primaryDestinations = listOf(
-                    AppDestination.RecoverPurchase,
-                    AppDestination.History,
-                ),
-                secondaryDestinations = listOf(
-                    AppDestination.Browse,
-                    AppDestination.TicketQr,
-                ),
-                onNavigate = { navController.navigate(it.route) },
+            ProfileScreen(
+                onVerHistorial = {
+                    navController.navigate(AppDestination.History.route)
+                },
+                onVerResenas = {
+                    navController.navigate(AppDestination.Reviews.route)
+                },
+                onRecuperarCompra = {
+                    navController.navigate(AppDestination.RecoverPurchase.route)
+                },
             )
         }
         composable(AppDestination.SocialHub.route) {
-            PlaceholderScreen(
-                current = AppDestination.SocialHub,
-                primaryDestinations = listOf(
-                    AppDestination.Requests,
-                    AppDestination.Friends,
-                    AppDestination.ChatList,
-                ),
-                secondaryDestinations = listOf(
-                    AppDestination.Recommendations,
-                    AppDestination.SearchUsers,
-                ),
-                onNavigate = { navController.navigate(it.route) },
+            SocialHubScreen(
+                friendsCount = friendIds.size,
+                incomingRequestsCount = incomingRequestIds.size,
+                outgoingRequestsCount = outgoingRequestIds.size,
+                onVerSolicitudes = {
+                    navController.navigate(AppDestination.Requests.route)
+                },
+                onVerAmigos = {
+                    navController.navigate(AppDestination.Friends.route)
+                },
+                onBuscarPersonas = {
+                    navController.navigate(AppDestination.SearchUsers.route)
+                },
+                onVerChats = {
+                    navController.navigate(AppDestination.ChatList.route)
+                },
+                onVerRecomendaciones = {
+                    navController.navigate(AppDestination.Recommendations.route)
+                },
             )
         }
         composable(AppDestination.Requests.route) {
-            PlaceholderScreen(
-                current = AppDestination.Requests,
-                primaryDestinations = listOf(
-                    AppDestination.Friends,
-                    AppDestination.SearchUsers,
-                ),
-                secondaryDestinations = listOf(AppDestination.SocialHub),
-                onNavigate = { navController.navigate(it.route) },
+            RequestsScreen(
+                users = mockSocialUsers,
+                incomingRequestIds = incomingRequestIds,
+                outgoingRequestIds = outgoingRequestIds,
+                onAccept = { userId ->
+                    incomingRequestIds.remove(userId)
+                    if (userId !in friendIds) friendIds.add(userId)
+                },
+                onReject = { userId ->
+                    incomingRequestIds.remove(userId)
+                },
+                onCancel = { userId ->
+                    outgoingRequestIds.remove(userId)
+                },
+                onVerAmigos = {
+                    navController.navigate(AppDestination.Friends.route)
+                },
+                onBuscarPersonas = {
+                    navController.navigate(AppDestination.SearchUsers.route)
+                },
             )
         }
         composable(AppDestination.Friends.route) {
-            PlaceholderScreen(
-                current = AppDestination.Friends,
-                primaryDestinations = listOf(
-                    AppDestination.SearchUsers,
-                    AppDestination.ChatList,
-                    AppDestination.RecommendMovie,
-                ),
-                secondaryDestinations = listOf(AppDestination.SocialHub),
-                onNavigate = { navController.navigate(it.route) },
+            FriendsScreen(
+                friends = mockSocialUsers.filter { it.id in friendIds },
+                onBuscarPersonas = {
+                    navController.navigate(AppDestination.SearchUsers.route)
+                },
+                onVerSolicitudes = {
+                    navController.navigate(AppDestination.Requests.route)
+                },
+                onOpenChat = { userId ->
+                    selectedChatFriendId = userId
+                    navController.navigate(AppDestination.PrivateChat.route)
+                },
+                onRecommendMovie = { userId ->
+                    selectedRecommendationFriendId = userId
+                    navController.navigate(AppDestination.RecommendMovie.route)
+                },
             )
         }
         composable(AppDestination.SearchUsers.route) {
-            PlaceholderScreen(
-                current = AppDestination.SearchUsers,
-                primaryDestinations = listOf(
-                    AppDestination.Requests,
-                    AppDestination.Friends,
-                ),
-                secondaryDestinations = listOf(AppDestination.SocialHub),
-                onNavigate = { navController.navigate(it.route) },
+            SearchUsersScreen(
+                users = mockSocialUsers,
+                friendIds = friendIds,
+                incomingRequestIds = incomingRequestIds,
+                outgoingRequestIds = outgoingRequestIds,
+                onAdd = { userId ->
+                    if (userId !in outgoingRequestIds && userId !in friendIds) {
+                        outgoingRequestIds.add(userId)
+                    }
+                },
+                onCancel = { userId ->
+                    outgoingRequestIds.remove(userId)
+                },
+                onVerSolicitudes = {
+                    navController.navigate(AppDestination.Requests.route)
+                },
+                onVerAmigos = {
+                    navController.navigate(AppDestination.Friends.route)
+                },
             )
         }
         composable(AppDestination.ChatList.route) {
-            PlaceholderScreen(
-                current = AppDestination.ChatList,
-                primaryDestinations = listOf(
-                    AppDestination.PrivateChat,
-                    AppDestination.Friends,
-                ),
-                secondaryDestinations = listOf(
-                    AppDestination.SocialHub,
-                    AppDestination.Recommendations,
-                ),
-                onNavigate = { navController.navigate(it.route) },
+            ChatListScreen(
+                friends = mockSocialUsers.filter { it.id in friendIds },
+                messages = chatMessages,
+                onOpenChat = { userId ->
+                    selectedChatFriendId = userId
+                    navController.navigate(AppDestination.PrivateChat.route)
+                },
+                onVerRecomendaciones = {
+                    navController.navigate(AppDestination.Recommendations.route)
+                },
             )
         }
         composable(AppDestination.PrivateChat.route) {
-            PlaceholderScreen(
-                current = AppDestination.PrivateChat,
-                primaryDestinations = listOf(
-                    AppDestination.RecommendMovie,
-                    AppDestination.ChatList,
-                ),
-                secondaryDestinations = listOf(AppDestination.Friends),
-                onNavigate = { navController.navigate(it.route) },
+            val friend = mockSocialUsers.find { it.id == selectedChatFriendId }
+                ?: mockSocialUsers.first()
+            PrivateChatScreen(
+                friend = friend,
+                messages = chatMessages,
+                onSendMessage = { text ->
+                    chatMessages.add(
+                        MockChatMessage(
+                            friendId = friend.id,
+                            sender = "Tú",
+                            text = text,
+                            time = "Ahora",
+                            isMine = true,
+                        ),
+                    )
+                },
+                onRecommendMovie = {
+                    selectedRecommendationFriendId = friend.id
+                    navController.navigate(AppDestination.RecommendMovie.route)
+                },
             )
         }
         composable(AppDestination.RecommendMovie.route) {
-            PlaceholderScreen(
-                current = AppDestination.RecommendMovie,
-                primaryDestinations = listOf(
-                    AppDestination.Recommendations,
-                    AppDestination.PrivateChat,
-                ),
-                secondaryDestinations = listOf(AppDestination.Friends),
-                onNavigate = { navController.navigate(it.route) },
+            val friends = mockSocialUsers.filter { it.id in friendIds }
+            RecommendMovieScreen(
+                friends = friends.sortedBy { it.id != selectedRecommendationFriendId },
+                movies = mockMovies,
+                onSendRecommendation = { friendId, movieId, note ->
+                    recommendations.add(
+                        MockMovieRecommendation(
+                            id = "rec-${recommendations.size + 1}",
+                            friendId = friendId,
+                            movieId = movieId,
+                            note = note,
+                            date = "Ahora",
+                            isMine = true,
+                        ),
+                    )
+                },
+                onVerRecomendaciones = {
+                    navController.navigate(AppDestination.Recommendations.route)
+                },
             )
         }
         composable(AppDestination.Recommendations.route) {
-            PlaceholderScreen(
-                current = AppDestination.Recommendations,
-                primaryDestinations = listOf(
-                    AppDestination.MovieDetail,
-                    AppDestination.ChatList,
-                ),
-                secondaryDestinations = listOf(AppDestination.SocialHub),
-                onNavigate = { navController.navigate(it.route) },
+            RecommendationsScreen(
+                recommendations = recommendations,
+                users = mockSocialUsers,
+                movies = mockMovies,
+                onIrAChats = {
+                    navController.navigate(AppDestination.ChatList.route)
+                },
+                onRecomendar = {
+                    navController.navigate(AppDestination.RecommendMovie.route)
+                },
             )
         }
     }
