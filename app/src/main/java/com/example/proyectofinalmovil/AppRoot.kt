@@ -34,6 +34,8 @@ import com.example.proyectofinalmovil.screens.ConfirmationScreen
 import com.example.proyectofinalmovil.screens.TicketQrScreen
 import com.example.proyectofinalmovil.screens.HistoryScreen
 import com.example.proyectofinalmovil.screens.RecoverPurchaseScreen
+import com.example.proyectofinalmovil.screens.ProfileScreen
+import com.example.proyectofinalmovil.screens.ReviewsScreen
 
 @Composable
 fun AppRoot() {
@@ -211,28 +213,26 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Reviews.route) {
-            PlaceholderScreen(
-                current = AppDestination.Reviews,
-                primaryDestinations = listOf(
-                    AppDestination.MovieDetail,
-                    AppDestination.Browse,
-                ),
-                secondaryDestinations = listOf(AppDestination.Profile),
-                onNavigate = { navController.navigate(it.route) },
+            ReviewsScreen(
+                onVolverAPerfil = {
+                    navController.navigate(AppDestination.Profile.route)
+                },
+                onVerCartelera = {
+                    navController.navigate(AppDestination.Browse.route)
+                },
             )
         }
         composable(AppDestination.Profile.route) {
-            PlaceholderScreen(
-                current = AppDestination.Profile,
-                primaryDestinations = listOf(
-                    AppDestination.RecoverPurchase,
-                    AppDestination.History,
-                ),
-                secondaryDestinations = listOf(
-                    AppDestination.Browse,
-                    AppDestination.TicketQr,
-                ),
-                onNavigate = { navController.navigate(it.route) },
+            ProfileScreen(
+                onVerHistorial = {
+                    navController.navigate(AppDestination.History.route)
+                },
+                onVerResenas = {
+                    navController.navigate(AppDestination.Reviews.route)
+                },
+                onRecuperarCompra = {
+                    navController.navigate(AppDestination.RecoverPurchase.route)
+                },
             )
         }
         composable(AppDestination.SocialHub.route) {

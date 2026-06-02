@@ -218,6 +218,64 @@ val mockPurchases = listOf(
     ),
 )
 
+data class MockUserProfile(
+    val name: String,
+    val email: String,
+    val phone: String,
+    val studentId: String,
+    val favoriteGenre: String,
+    val memberSince: String,
+    val initials: String,
+)
+
+val mockUserProfile = MockUserProfile(
+    name = "Alan Urías",
+    email = "alan@uabcs.mx",
+    phone = "612 123 4567",
+    studentId = "UABCS-2026-014",
+    favoriteGenre = "Thriller",
+    memberSince = "Mayo 2026",
+    initials = "AU",
+)
+
+data class MockReview(
+    val id: String,
+    val movieId: String,
+    val author: String,
+    val rating: Int,
+    val date: String,
+    val comment: String,
+    val isMine: Boolean = false,
+)
+
+val mockReviews = listOf(
+    MockReview(
+        id = "review-1",
+        movieId = "estacion-7",
+        author = "Alan Urías",
+        rating = 5,
+        date = "29 May 2026",
+        comment = "La tensión crece muy bien y el final deja buen tema para platicar saliendo de la sala.",
+        isMine = true,
+    ),
+    MockReview(
+        id = "review-2",
+        movieId = "el-ultimo-faro",
+        author = "Mariana López",
+        rating = 4,
+        date = "23 May 2026",
+        comment = "Me gustó el ritmo tranquilo y la fotografía. Es de esas películas que se sienten personales.",
+    ),
+    MockReview(
+        id = "review-3",
+        movieId = "aurora-3024",
+        author = "Daniel Rojas",
+        rating = 4,
+        date = "15 May 2026",
+        comment = "Buena experiencia para sala grande. La historia tarda un poco en arrancar, pero el ambiente funciona.",
+    ),
+)
+
 val mockSynopsis: Map<String, String> = mapOf(
     "estacion-7" to "En una remota estación ferroviaria del altiplano, siete desconocidos esperan un tren que tal vez nunca llegue. A medida que la noche avanza, descubren que sus historias están más entrelazadas de lo que imaginaban.",
     "el-ultimo-faro" to "Un marinero retirado regresa a su pueblo natal para encontrarse con un faro que lleva décadas apagado. Lo que descubre ahí cambiará su comprensión de la familia y el tiempo.",
