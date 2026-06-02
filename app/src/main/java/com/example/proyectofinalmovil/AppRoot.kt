@@ -32,6 +32,8 @@ import com.example.proyectofinalmovil.screens.ConcessionsScreen
 import com.example.proyectofinalmovil.screens.SummaryScreen
 import com.example.proyectofinalmovil.screens.ConfirmationScreen
 import com.example.proyectofinalmovil.screens.TicketQrScreen
+import com.example.proyectofinalmovil.screens.HistoryScreen
+import com.example.proyectofinalmovil.screens.RecoverPurchaseScreen
 
 @Composable
 fun AppRoot() {
@@ -178,6 +180,9 @@ private fun AppNavHost(
                 onIrAlHistorial = {
                     navController.navigate(AppDestination.History.route)
                 },
+                onRecuperarCompra = {
+                    navController.navigate(AppDestination.RecoverPurchase.route)
+                },
                 onVolverACartelera = {
                     navController.navigate(AppDestination.Browse.route) {
                         popUpTo(AppDestination.Browse.route) { inclusive = true }
@@ -186,25 +191,23 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.History.route) {
-            PlaceholderScreen(
-                current = AppDestination.History,
-                primaryDestinations = listOf(
-                    AppDestination.RecoverPurchase,
-                    AppDestination.TicketQr,
-                ),
-                secondaryDestinations = listOf(AppDestination.Profile),
-                onNavigate = { navController.navigate(it.route) },
+            HistoryScreen(
+                onVerBoleto = {
+                    navController.navigate(AppDestination.TicketQr.route)
+                },
+                onRecuperarCompra = {
+                    navController.navigate(AppDestination.RecoverPurchase.route)
+                },
             )
         }
         composable(AppDestination.RecoverPurchase.route) {
-            PlaceholderScreen(
-                current = AppDestination.RecoverPurchase,
-                primaryDestinations = listOf(
-                    AppDestination.History,
-                    AppDestination.Login,
-                ),
-                secondaryDestinations = listOf(AppDestination.Profile),
-                onNavigate = { navController.navigate(it.route) },
+            RecoverPurchaseScreen(
+                onVerBoleto = {
+                    navController.navigate(AppDestination.TicketQr.route)
+                },
+                onIrAlHistorial = {
+                    navController.navigate(AppDestination.History.route)
+                },
             )
         }
         composable(AppDestination.Reviews.route) {

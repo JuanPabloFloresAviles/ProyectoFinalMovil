@@ -163,6 +163,61 @@ val mockShowtimesByMovieId: Map<String, List<MockShowtime>> = mapOf(
     ),
 )
 
+data class MockPurchase(
+    val folio: String,
+    val email: String,
+    val movieId: String,
+    val date: String,
+    val time: String,
+    val room: String,
+    val seats: List<String>,
+    val status: String,
+    val ticketTotal: Int,
+    val concessionsTotal: Int,
+) {
+    val total: Int
+        get() = ticketTotal + concessionsTotal
+}
+
+val mockPurchases = listOf(
+    MockPurchase(
+        folio = "CINE-2026-4A7F",
+        email = "invitado@cineuabcs.mx",
+        movieId = "estacion-7",
+        date = "28 May 2026",
+        time = "18:10",
+        room = "Sala 2",
+        seats = listOf("B7", "B8"),
+        status = "Activa",
+        ticketTotal = 90,
+        concessionsTotal = 140,
+    ),
+    MockPurchase(
+        folio = "CINE-2026-9K2M",
+        email = "alan@uabcs.mx",
+        movieId = "el-ultimo-faro",
+        date = "22 May 2026",
+        time = "19:30",
+        room = "Sala 1",
+        seats = listOf("D4"),
+        status = "Usada",
+        ticketTotal = 45,
+        concessionsTotal = 65,
+    ),
+    MockPurchase(
+        folio = "CINE-2026-6R8Q",
+        email = "alan@uabcs.mx",
+        movieId = "aurora-3024",
+        date = "14 May 2026",
+        time = "21:00",
+        room = "Sala 2",
+        seats = listOf("F10", "F11", "F12"),
+        status = "Usada",
+        ticketTotal = 135,
+        concessionsTotal = 0,
+    ),
+)
+
 val mockSynopsis: Map<String, String> = mapOf(
     "estacion-7" to "En una remota estación ferroviaria del altiplano, siete desconocidos esperan un tren que tal vez nunca llegue. A medida que la noche avanza, descubren que sus historias están más entrelazadas de lo que imaginaban.",
     "el-ultimo-faro" to "Un marinero retirado regresa a su pueblo natal para encontrarse con un faro que lleva décadas apagado. Lo que descubre ahí cambiará su comprensión de la familia y el tiempo.",
