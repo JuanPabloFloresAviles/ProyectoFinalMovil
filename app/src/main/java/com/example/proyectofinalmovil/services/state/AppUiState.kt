@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.proyectofinalmovil.services.api.AuthSession
 import com.example.proyectofinalmovil.services.mock.MockChatMessage
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
 import com.example.proyectofinalmovil.services.mock.MockMovie
@@ -56,9 +57,33 @@ class AppUiState {
     var selectedChatFriendId by mutableStateOf(mockInitialFriendIds.first())
     var selectedRecommendationFriendId by mutableStateOf(mockInitialFriendIds.first())
     var activePurchaseFolio by mutableStateOf(initialActivePurchase()?.folio ?: mockPurchases.first().folio)
+    var signedInEmail by mutableStateOf("")
+        private set
+    var signedInName by mutableStateOf("")
+        private set
+    var authToken by mutableStateOf("")
+        private set
+    var userRole by mutableStateOf(UserRole.CLIENT)
+        private set
 
     val selectedSeatIds = mutableStateListOf<String>()
     val concessionQuantities = mutableStateMapOf<String, Int>()
+
+    fun signIn(session: AuthSession) {
+        signedInEmail = session.email
+        signedInName = session.name
+        authToken = session.token
+        userRole = userRoleFromApi(session.role)
+    }
+
+    fun isAdmin(): Boolean = userRole == UserRole.ADMIN
+
+    fun adminDashboardMetrics(): AdminDashboardMetrics {
+        return calculateAdminDashboardMetrics(
+            purchases = purchases,
+            showtimesByMovieId = showtimesByMovieId,
+        )
+    }
 
     fun selectMovie(movieId: String) {
         selectedMovieId = movieId

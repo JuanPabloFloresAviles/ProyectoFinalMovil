@@ -5,6 +5,11 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
+class ApiException(
+    val statusCode: Int,
+    val responseBody: String,
+) : IllegalStateException("Error $statusCode al consultar la API")
+
 class CineUabcsApiClient(
     private val config: CineUabcsApiConfig = CineUabcsApiConfig(),
 ) {
@@ -18,7 +23,7 @@ class CineUabcsApiClient(
             val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
             val body = BufferedReader(InputStreamReader(stream)).use { it.readText() }
             if (connection.responseCode !in 200..299) {
-                error("Error ${connection.responseCode} al consultar ${config.endpoint(path)}: $body")
+                throw ApiException(connection.responseCode, body)
             }
             body
         } finally {
@@ -42,7 +47,7 @@ class CineUabcsApiClient(
             val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
             val body = BufferedReader(InputStreamReader(stream)).use { it.readText() }
             if (connection.responseCode !in 200..299) {
-                error("Error ${connection.responseCode} al enviar ${config.endpoint(path)}: $body")
+                throw ApiException(connection.responseCode, body)
             }
             body
         } finally {

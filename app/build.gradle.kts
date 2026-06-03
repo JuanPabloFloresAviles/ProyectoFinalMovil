@@ -21,7 +21,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val apiBaseUrl = providers.gradleProperty("CINE_UABCS_API_BASE_URL")
             .orElse(providers.environmentVariable("CINE_UABCS_API_BASE_URL"))
-            .orElse("http://10.0.2.2:3000")
+            .orElse("https://cine-uabcs.vercel.app")
             .get()
         buildConfigField("String", "CINE_UABCS_API_BASE_URL", "\"$apiBaseUrl\"")
     }
