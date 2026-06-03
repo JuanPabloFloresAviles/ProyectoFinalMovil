@@ -151,24 +151,32 @@ fun SummaryScreen(
 
             // Sección de dulcería
             SeccionResumen(titulo = "Dulcería") {
-                itemsDulceria.forEach { item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = "${item.producto.name} × ${item.cantidad}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = GrisTexto.copy(alpha = 0.7f),
-                        )
-                        Text(
-                            text = "$${item.cantidad * item.producto.price}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = GrisTexto,
-                        )
+                if (itemsDulceria.isEmpty()) {
+                    Text(
+                        text = "Sin productos agregados",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GrisTexto.copy(alpha = 0.62f),
+                    )
+                } else {
+                    itemsDulceria.forEach { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "${item.producto.name} × ${item.cantidad}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = GrisTexto.copy(alpha = 0.7f),
+                            )
+                            Text(
+                                text = "$${item.cantidad * item.producto.price}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = GrisTexto,
+                            )
+                        }
                     }
                 }
             }
@@ -225,6 +233,7 @@ fun SummaryScreen(
             UiPrimaryButton(
                 text = "Confirmar compra  ›",
                 onClick = onConfirmarCompra,
+                enabled = totalGeneral > 0 && asientosEjemplo.isNotEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp),

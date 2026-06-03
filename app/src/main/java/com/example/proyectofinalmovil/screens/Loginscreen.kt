@@ -13,7 +13,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Email
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,7 +29,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
@@ -141,19 +139,6 @@ fun LoginScreen(
             },
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            TextButton(onClick = {}) {
-                Text(
-                    text = "¿Olvidaste tu contraseña?",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-
         Spacer(modifier = Modifier.height(8.dp))
 
         UiPrimaryButton(
@@ -162,42 +147,6 @@ fun LoginScreen(
             enabled = formularioListo,
             modifier = Modifier.fillMaxWidth(),
         )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outline)
-            Text(
-                text = "O CONTINÚA CON",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outline)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            UiGhostButton(
-                text = "Google",
-                onClick = {},
-                fillWidth = false,
-                modifier = Modifier.weight(1f),
-            )
-            UiGhostButton(
-                text = "Apple",
-                onClick = {},
-                fillWidth = false,
-                modifier = Modifier.weight(1f),
-            )
-        }
 
         Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.height(32.dp))

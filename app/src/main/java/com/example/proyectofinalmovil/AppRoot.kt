@@ -20,7 +20,6 @@ import com.example.proyectofinalmovil.components.UiTabBar
 import com.example.proyectofinalmovil.components.UiTabItem
 import com.example.proyectofinalmovil.navigation.AppDestination
 import com.example.proyectofinalmovil.navigation.bottomBarDestinations
-import com.example.proyectofinalmovil.screens.PlaceholderScreen
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 import com.example.proyectofinalmovil.screens.SplashScreen
 import com.example.proyectofinalmovil.screens.LoginScreen
@@ -71,7 +70,6 @@ fun AppRoot() {
                     UiAppBar(
                         title = currentTitle(currentRoute),
                         navigationIcon = if (currentRoute == AppDestination.Splash.route) null else AppIcons.Back,
-                        actionIcon = AppIcons.Search,
                         onNavigationClick = {
                             if (!navController.popBackStack()) {
                                 navController.navigate(AppDestination.Splash.route)
@@ -214,7 +212,8 @@ private fun AppNavHost(
         }
         composable(AppDestination.History.route) {
             HistoryScreen(
-                onVerBoleto = {
+                onVerBoleto = { folio ->
+                    appState.activePurchaseFolio = folio
                     navController.navigate(AppDestination.TicketQr.route)
                 },
                 onRecuperarCompra = {
@@ -224,7 +223,8 @@ private fun AppNavHost(
         }
         composable(AppDestination.RecoverPurchase.route) {
             RecoverPurchaseScreen(
-                onVerBoleto = {
+                onVerBoleto = { folio ->
+                    appState.activePurchaseFolio = folio
                     navController.navigate(AppDestination.TicketQr.route)
                 },
                 onIrAlHistorial = {

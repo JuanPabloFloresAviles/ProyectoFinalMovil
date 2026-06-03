@@ -41,7 +41,7 @@ private val RojoSuave = Color(0xFFFFE9E5)
 
 @Composable
 fun RecoverPurchaseScreen(
-    onVerBoleto: () -> Unit,
+    onVerBoleto: (String) -> Unit,
     onIrAlHistorial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -133,7 +133,7 @@ fun RecoverPurchaseScreen(
             when {
                 recoveredPurchase != null -> RecoveredPurchaseCard(
                     purchase = recoveredPurchase,
-                    onVerBoleto = onVerBoleto,
+                    onVerBoleto = { onVerBoleto(recoveredPurchase.folio) },
                 )
                 searchDone -> SearchMessage(
                     title = "No encontramos esa compra",

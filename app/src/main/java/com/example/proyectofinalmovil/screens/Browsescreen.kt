@@ -24,17 +24,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -105,28 +100,11 @@ fun BrowseScreen(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = {}) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "Buscar",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                IconButton(onClick = {}) {
-                    BadgedBox(
-                        badge = {
-                            Badge(containerColor = CinemaBlue)
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Notifications,
-                            contentDescription = "Notificaciones",
-                            tint = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                }
-            }
+            Text(
+                text = "${appState.movies.size} películas",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         PeliculaDestacadaCard(
@@ -188,7 +166,7 @@ fun BrowseScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            TextButton(onClick = { /* ver todo — pendiente */ }) {
+            TextButton(onClick = { filtroActivo = "Todo" }) {
                 Text(
                     text = "Ver todo",
                     color = CinemaBlue,
