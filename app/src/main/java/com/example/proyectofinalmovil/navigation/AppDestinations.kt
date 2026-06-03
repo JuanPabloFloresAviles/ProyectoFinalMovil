@@ -27,6 +27,12 @@ sealed class AppDestination(
     data object PrivateChat : AppDestination("private-chat", "Chat privado")
     data object RecommendMovie : AppDestination("recommend-movie", "Recomendar pelicula")
     data object Recommendations : AppDestination("recommendations", "Recomendaciones")
+    data object AdminDashboard : AppDestination("admin-dashboard", "Panel administrativo")
+    data object AdminMovies : AppDestination("admin-movies", "Gestión de películas")
+    data object AdminShowtimes : AppDestination("admin-showtimes", "Gestión de funciones")
+    data object AdminConcessions : AppDestination("admin-concessions", "Gestión de dulcería")
+    data object AdminRooms : AppDestination("admin-rooms", "Salas y butacas")
+    data object AdminReports : AppDestination("admin-reports", "Ventas y estadísticas")
 }
 
 val bottomBarDestinations = listOf(

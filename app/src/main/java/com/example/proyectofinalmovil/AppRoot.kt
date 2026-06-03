@@ -6,7 +6,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
@@ -44,9 +47,17 @@ import com.example.proyectofinalmovil.screens.ChatListScreen
 import com.example.proyectofinalmovil.screens.PrivateChatScreen
 import com.example.proyectofinalmovil.screens.RecommendMovieScreen
 import com.example.proyectofinalmovil.screens.RecommendationsScreen
+import com.example.proyectofinalmovil.screens.AdminAccessDeniedScreen
+import com.example.proyectofinalmovil.screens.AdminDashboardScreen
+import com.example.proyectofinalmovil.screens.AdminModuleScreen
 import com.example.proyectofinalmovil.services.state.AppUiState
 import com.example.proyectofinalmovil.services.state.ProvideAppUiState
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
+import com.example.proyectofinalmovil.services.api.AuthApi
+import com.example.proyectofinalmovil.services.api.AuthException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AppRoot() {
@@ -106,6 +117,8 @@ private fun AppNavHost(
     navController: NavHostController,
 ) {
     val appState = LocalAppUiState.current
+    val authApi = remember { AuthApi() }
+    val coroutineScope = rememberCoroutineScope()
 
     NavHost(
         navController = navController,
@@ -119,9 +132,37 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Login.route) {
+            var isLoading by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+
             LoginScreen(
-                onEntrar = { navController.navigate(AppDestination.Browse.route) },
+                onEntrar = { email, password ->
+                    isLoading = true
+                    errorMessage = null
+                    coroutineScope.launch {
+                        try {
+                            val session = withContext(Dispatchers.IO) {
+                                authApi.login(email, password)
+                            }
+                            appState.signIn(session)
+                            val destination = if (appState.isAdmin()) {
+                                AppDestination.AdminDashboard
+                            } else {
+                                AppDestination.Browse
+                            }
+                            navController.navigate(destination.route)
+                        } catch (error: AuthException) {
+                            errorMessage = error.message
+                        } catch (_: Exception) {
+                            errorMessage = "No se pudo conectar con el servidor. Intenta nuevamente."
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                },
                 onIrARegistro = { navController.navigate(AppDestination.Signup.route) },
+                isLoading = isLoading,
+                errorMessage = errorMessage,
             )
         }
         composable(AppDestination.Signup.route) {
@@ -392,6 +433,103 @@ private fun AppNavHost(
                 },
             )
         }
+        composable(AppDestination.AdminDashboard.route) {
+            AdminGuard(
+                isAdmin = appState.isAdmin(),
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminDashboardScreen(
+                    metrics = appState.adminDashboardMetrics(),
+                    moviesCount = appState.movies.size,
+                    showtimesCount = appState.showtimesByMovieId.values.sumOf { it.size },
+                    concessionsCount = appState.concessions.size,
+                    onMovies = { navController.navigate(AppDestination.AdminMovies.route) },
+                    onShowtimes = { navController.navigate(AppDestination.AdminShowtimes.route) },
+                    onConcessions = { navController.navigate(AppDestination.AdminConcessions.route) },
+                    onRooms = { navController.navigate(AppDestination.AdminRooms.route) },
+                    onReports = { navController.navigate(AppDestination.AdminReports.route) },
+                    onClientView = { navController.navigate(AppDestination.Browse.route) },
+                )
+            }
+        }
+        composable(AppDestination.AdminMovies.route) {
+            AdminModuleRoute(
+                isAdmin = appState.isAdmin(),
+                title = "Gestión de películas",
+                description = "Administra los títulos que aparecen en cartelera.",
+                navController = navController,
+            )
+        }
+        composable(AppDestination.AdminShowtimes.route) {
+            AdminModuleRoute(
+                isAdmin = appState.isAdmin(),
+                title = "Gestión de funciones",
+                description = "Programa horarios, salas, precios y estados.",
+                navController = navController,
+            )
+        }
+        composable(AppDestination.AdminConcessions.route) {
+            AdminModuleRoute(
+                isAdmin = appState.isAdmin(),
+                title = "Gestión de dulcería",
+                description = "Mantén productos, combos, stock y precios.",
+                navController = navController,
+            )
+        }
+        composable(AppDestination.AdminRooms.route) {
+            AdminModuleRoute(
+                isAdmin = appState.isAdmin(),
+                title = "Salas y butacas",
+                description = "Configura formatos, capacidad y distribución.",
+                navController = navController,
+            )
+        }
+        composable(AppDestination.AdminReports.route) {
+            AdminModuleRoute(
+                isAdmin = appState.isAdmin(),
+                title = "Ventas y estadísticas",
+                description = "Consulta reportes de boletos, dulcería y películas.",
+                navController = navController,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdminGuard(
+    isAdmin: Boolean,
+    onBackToLogin: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    if (isAdmin) {
+        content()
+    } else {
+        AdminAccessDeniedScreen(onBackToLogin = onBackToLogin)
+    }
+}
+
+@Composable
+private fun AdminModuleRoute(
+    isAdmin: Boolean,
+    title: String,
+    description: String,
+    navController: NavHostController,
+) {
+    AdminGuard(
+        isAdmin = isAdmin,
+        onBackToLogin = { navController.navigateToLogin() },
+    ) {
+        AdminModuleScreen(
+            title = title,
+            description = description,
+            onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+        )
+    }
+}
+
+private fun NavHostController.navigateToLogin() {
+    navigate(AppDestination.Login.route) {
+        popUpTo(AppDestination.Splash.route)
     }
 }
 
@@ -420,6 +558,12 @@ private fun currentTitle(route: String?): String {
         AppDestination.PrivateChat.route -> AppDestination.PrivateChat.title
         AppDestination.RecommendMovie.route -> AppDestination.RecommendMovie.title
         AppDestination.Recommendations.route -> AppDestination.Recommendations.title
+        AppDestination.AdminDashboard.route -> AppDestination.AdminDashboard.title
+        AppDestination.AdminMovies.route -> AppDestination.AdminMovies.title
+        AppDestination.AdminShowtimes.route -> AppDestination.AdminShowtimes.title
+        AppDestination.AdminConcessions.route -> AppDestination.AdminConcessions.title
+        AppDestination.AdminRooms.route -> AppDestination.AdminRooms.title
+        AppDestination.AdminReports.route -> AppDestination.AdminReports.title
         else -> "CineUABCS"
     }
 }

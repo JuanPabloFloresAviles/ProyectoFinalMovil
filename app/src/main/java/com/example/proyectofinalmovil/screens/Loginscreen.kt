@@ -36,8 +36,10 @@ import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 @Composable
 fun LoginScreen(
-    onEntrar: () -> Unit,
+    onEntrar: (String, String) -> Unit,
     onIrARegistro: () -> Unit,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
     modifier: Modifier = Modifier,
 ) {
     var correo by remember { mutableStateOf("") }
@@ -142,11 +144,21 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         UiPrimaryButton(
-            text = "Entrar",
-            onClick = onEntrar,
-            enabled = formularioListo,
+            text = if (isLoading) "Validando..." else "Entrar",
+            onClick = { onEntrar(correo, contrasena) },
+            enabled = formularioListo && !isLoading,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (errorMessage != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.height(32.dp))
@@ -177,6 +189,6 @@ fun LoginScreen(
 @Composable
 private fun LoginScreenPreview() {
     ProyectoFinalMovilTheme {
-        LoginScreen(onEntrar = {}, onIrARegistro = {})
+        LoginScreen(onEntrar = { _, _ -> }, onIrARegistro = {})
     }
 }
