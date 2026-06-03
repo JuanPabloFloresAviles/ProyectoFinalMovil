@@ -36,7 +36,7 @@ private val VerdeSuave = Color(0xFFE7F5E8)
 
 @Composable
 fun HistoryScreen(
-    onVerBoleto: () -> Unit,
+    onVerBoleto: (String) -> Unit,
     onRecuperarCompra: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -79,7 +79,7 @@ fun HistoryScreen(
                 PurchaseCard(
                     purchase = purchase,
                     movieTitle = appState.movieForPurchase(purchase).title,
-                    onVerBoleto = onVerBoleto,
+                    onVerBoleto = { onVerBoleto(purchase.folio) },
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }

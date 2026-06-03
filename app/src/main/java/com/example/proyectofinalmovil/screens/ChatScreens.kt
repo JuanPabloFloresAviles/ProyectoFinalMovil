@@ -141,9 +141,13 @@ fun PrivateChatScreen(
             }
 
             Spacer(modifier = Modifier.height(18.dp))
-            friendMessages.forEach { message ->
-                MessageBubble(message)
-                Spacer(modifier = Modifier.height(10.dp))
+            if (friendMessages.isEmpty()) {
+                EmptyCard("Todavía no hay mensajes con este amigo.")
+            } else {
+                friendMessages.forEach { message ->
+                    MessageBubble(message)
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
             }
         }
 
@@ -208,31 +212,45 @@ fun RecommendMovieScreen(
             ScreenIntro(
                 eyebrow = "RECOMENDAR",
                 title = "Recomendar película",
-                body = "Elige un amigo, una película y envía una recomendación mock.",
+                body = "Elige un amigo, una película y envía una recomendación.",
             )
             Spacer(modifier = Modifier.height(18.dp))
 
             SectionTitle("Amigo")
-            friends.forEach { friend ->
-                SelectableCard(
-                    title = friend.name,
-                    body = "Le gusta ${friend.favoriteGenre}",
-                    selected = selectedFriendId == friend.id,
-                    onClick = { selectedFriendId = friend.id },
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+            if (friends.isEmpty()) {
+                EmptyCard("Agrega amigos antes de enviar recomendaciones.")
+            } else {
+                friends.forEach { friend ->
+                    SelectableCard(
+                        title = friend.name,
+                        body = "Le gusta ${friend.favoriteGenre}",
+                        selected = selectedFriendId == friend.id,
+                        onClick = {
+                            selectedFriendId = friend.id
+                            sent = false
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
             SectionTitle("Película")
-            movies.take(4).forEach { movie ->
-                SelectableCard(
-                    title = movie.title,
-                    body = "${movie.genre} · ${movie.classification} · ${movie.duration}",
-                    selected = selectedMovieId == movie.id,
-                    onClick = { selectedMovieId = movie.id },
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+            if (movies.isEmpty()) {
+                EmptyCard("No hay películas disponibles para recomendar.")
+            } else {
+                movies.take(4).forEach { movie ->
+                    SelectableCard(
+                        title = movie.title,
+                        body = "${movie.genre} · ${movie.classification} · ${movie.duration}",
+                        selected = selectedMovieId == movie.id,
+                        onClick = {
+                            selectedMovieId = movie.id
+                            sent = false
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
