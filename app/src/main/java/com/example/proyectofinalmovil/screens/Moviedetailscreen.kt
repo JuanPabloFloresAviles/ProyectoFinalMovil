@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.proyectofinalmovil.components.RemoteMoviePoster
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockMovie
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
@@ -331,13 +332,12 @@ private fun PosterHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(16f / 9f)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(pelicula.accentStart, pelicula.accentEnd),
-                )
-            ),
+            .aspectRatio(16f / 9f),
     ) {
+        RemoteMoviePoster(
+            movie = pelicula,
+            modifier = Modifier.fillMaxSize(),
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()

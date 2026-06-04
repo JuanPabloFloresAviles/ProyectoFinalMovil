@@ -17,7 +17,32 @@ data class AdminDashboardMetrics(
     val transactions: Int,
     val preferredRoomFormat: String,
     val preferredRoomOccupancyPercent: Int,
+    val ticketsSold: Int = 0,
+    val roomOccupancyPercent: Int = 0,
+    val lowStockCount: Int = 0,
+    val topMovies: List<AdminReportItem> = emptyList(),
+    val topProducts: List<AdminReportItem> = emptyList(),
+    val salesSeries: List<AdminReportItem> = emptyList(),
 )
+
+data class AdminReportItem(
+    val label: String,
+    val value: Int,
+    val detail: String,
+    val secondaryValue: Int? = null,
+)
+
+enum class AdminSalesRange(val apiValue: String, val label: String) {
+    TODAY("hoy", "Hoy"),
+    LAST_7_DAYS("7dias", "7 días"),
+    THIS_MONTH("mes", "Este mes"),
+    LAST_MONTH("1mes", "1 mes"),
+    BIMESTER("bimestre", "1 bimestre"),
+    TRIMESTER("trimestre", "1 trimestre"),
+    FOUR_MONTHS("cuatrimestre", "1 cuatrimestre"),
+    SEMESTER("semestre", "1 semestre"),
+    YEAR("anio", "1 año"),
+}
 
 fun userRoleFromApi(role: String): UserRole {
     return if (role.trim().equals("ADMINISTRADOR", ignoreCase = true)) {

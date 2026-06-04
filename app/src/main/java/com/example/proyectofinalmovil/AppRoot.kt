@@ -28,6 +28,7 @@ import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 import com.example.proyectofinalmovil.screens.SplashScreen
 import com.example.proyectofinalmovil.screens.LoginScreen
 import com.example.proyectofinalmovil.screens.SignupScreen
+import com.example.proyectofinalmovil.screens.AllShowtimesScreen
 import com.example.proyectofinalmovil.screens.BrowseScreen
 import com.example.proyectofinalmovil.screens.MovieDetailScreen
 import com.example.proyectofinalmovil.screens.ShowtimesScreen
@@ -51,16 +52,21 @@ import com.example.proyectofinalmovil.screens.RecommendationsScreen
 import com.example.proyectofinalmovil.screens.AdminAccessDeniedScreen
 import com.example.proyectofinalmovil.screens.AdminDashboardScreen
 import com.example.proyectofinalmovil.screens.AdminConcessionsManagementScreen
+import com.example.proyectofinalmovil.screens.AdminMovieImportScreen
 import com.example.proyectofinalmovil.screens.AdminMoviesManagementScreen
-import com.example.proyectofinalmovil.screens.AdminModuleScreen
+import com.example.proyectofinalmovil.screens.AdminReportsScreen
+import com.example.proyectofinalmovil.screens.AdminRoomsManagementScreen
 import com.example.proyectofinalmovil.screens.AdminShowtimesManagementScreen
+import com.example.proyectofinalmovil.screens.classificationFromTmdb
 import com.example.proyectofinalmovil.services.state.AppUiState
+import com.example.proyectofinalmovil.services.state.AdminSalesRange
 import com.example.proyectofinalmovil.services.state.ProvideAppUiState
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.services.api.AuthApi
 import com.example.proyectofinalmovil.services.api.AuthException
 import com.example.proyectofinalmovil.services.api.CatalogApi
 import com.example.proyectofinalmovil.services.api.MobileStateApi
+import com.example.proyectofinalmovil.services.api.TmdbApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -72,15 +78,9 @@ fun AppRoot() {
     val currentRoute = navBackStackEntry?.destination?.route
     val appState = remember { AppUiState() }
 
-    val tabItems = listOf(
-        UiTabItem("Cartelera", AppIcons.Home),
-        UiTabItem("Boletos", AppIcons.Tickets),
-        UiTabItem("Comunidad", AppIcons.Community),
-        UiTabItem("Historial", AppIcons.History),
-        UiTabItem("Perfil", AppIcons.Profile),
-    )
-
     ProvideAppUiState(appUiState = appState) {
+        val bottomDestinations = bottomDestinationsFor(appState.isAdmin())
+        val tabItems = bottomTabsFor(appState.isAdmin())
         Surface(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 topBar = {
@@ -95,12 +95,12 @@ fun AppRoot() {
                     )
                 },
                 bottomBar = {
-                    if (currentRoute in bottomBarDestinations.map { it.route }) {
+                    if (currentRoute in bottomDestinations.map { it.route }) {
                         UiTabBar(
                             tabs = tabItems,
-                            selectedIndex = selectedTabIndex(currentRoute),
+                            selectedIndex = selectedTabIndex(currentRoute, bottomDestinations),
                             onTabSelected = { index ->
-                                navController.navigate(bottomBarDestinations[index].route) {
+                                navController.navigate(bottomDestinations[index].route) {
                                     launchSingleTop = true
                                 }
                             },
@@ -126,7 +126,22 @@ private fun AppNavHost(
     val authApi = remember { AuthApi() }
     val catalogApi = remember { CatalogApi() }
     val mobileStateApi = remember { MobileStateApi() }
+    val tmdbApi = remember { TmdbApi() }
     val coroutineScope = rememberCoroutineScope()
+    var adminSalesRange by remember { mutableStateOf(AdminSalesRange.LAST_7_DAYS) }
+
+    fun refreshAdminMetrics(range: AdminSalesRange) {
+        adminSalesRange = range
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    mobileStateApi.getAdminMetrics(appState.authToken, range)
+                }
+            }.onSuccess { metrics ->
+                appState.replaceAdminMetrics(metrics)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -169,7 +184,7 @@ private fun AppNavHost(
                             if (appState.isAdmin()) {
                                 runCatching {
                                     withContext(Dispatchers.IO) {
-                                        mobileStateApi.getAdminMetrics(session.token)
+                                        mobileStateApi.getAdminMetrics(session.token, adminSalesRange)
                                     }
                                 }.onSuccess { metrics ->
                                     appState.replaceAdminMetrics(metrics)
@@ -213,6 +228,18 @@ private fun AppNavHost(
                 onMovieClick = { movieId ->
                     appState.selectMovie(movieId)
                     navController.navigate(AppDestination.MovieDetail.route)
+                },
+                onVerTodo = {
+                    navController.navigate(AppDestination.AllShowtimes.route)
+                },
+            )
+        }
+        composable(AppDestination.AllShowtimes.route) {
+            AllShowtimesScreen(
+                onShowtimeClick = { movieId, showtimeId ->
+                    appState.selectMovie(movieId)
+                    appState.selectShowtime(showtimeId)
+                    navController.navigate(AppDestination.Seats.route)
                 },
             )
         }
@@ -331,6 +358,20 @@ private fun AppNavHost(
                 },
                 onRecuperarCompra = {
                     navController.navigate(AppDestination.RecoverPurchase.route)
+                },
+                onCerrarSesion = {
+                    appState.signOut()
+                    navController.navigate(AppDestination.Login.route) {
+                        popUpTo(AppDestination.Splash.route) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                },
+                onIniciarSesion = {
+                    navController.navigate(AppDestination.Login.route) {
+                        launchSingleTop = true
+                    }
                 },
             )
         }
@@ -491,6 +532,8 @@ private fun AppNavHost(
             ) {
                 AdminDashboardScreen(
                     metrics = appState.adminDashboardMetrics(),
+                    selectedRange = adminSalesRange,
+                    onRangeSelected = { range -> refreshAdminMetrics(range) },
                     moviesCount = appState.movies.size,
                     showtimesCount = appState.showtimesByMovieId.values.sumOf { it.size },
                     concessionsCount = appState.concessions.size,
@@ -510,7 +553,7 @@ private fun AppNavHost(
             ) {
                 AdminMoviesManagementScreen(
                     movies = appState.movies,
-                    onSaveMovie = { id, title, genre, classification, duration, rating, year ->
+                    onSaveMovie = { id, title, synopsis, classification, duration ->
                         coroutineScope.launch {
                             runCatching {
                                 withContext(Dispatchers.IO) {
@@ -518,7 +561,7 @@ private fun AppNavHost(
                                         token = appState.authToken,
                                         id = id,
                                         title = title,
-                                        synopsis = "Sinopsis pendiente por capturar.",
+                                        synopsis = synopsis,
                                         classification = classification,
                                         durationMinutes = duration.filter { it.isDigit() }.toIntOrNull() ?: 90,
                                     )
@@ -528,7 +571,43 @@ private fun AppNavHost(
                             }
                         }
                     },
+                    onImportMovies = { navController.navigate(AppDestination.AdminMovieImport.route) },
                     onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                )
+            }
+        }
+        composable(AppDestination.AdminMovieImport.route) {
+            AdminGuard(
+                isAdmin = appState.isAdmin(),
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminMovieImportScreen(
+                    tmdbApi = tmdbApi,
+                    onImportMovie = { candidate ->
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    val detail = tmdbApi.getMovieDetail(candidate.tmdbId)
+                                    catalogApi.saveMovie(
+                                        token = appState.authToken,
+                                        id = null,
+                                        title = detail.title,
+                                        synopsis = detail.overview,
+                                        classification = classificationFromTmdb(candidate),
+                                        durationMinutes = detail.runtimeMinutes,
+                                        posterUrl = detail.posterUrl,
+                                        tmdbId = detail.tmdbId,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                                navController.navigate(AppDestination.AdminMovies.route) {
+                                    popUpTo(AppDestination.AdminMovieImport.route) { inclusive = true }
+                                }
+                            }
+                        }
+                    },
+                    onBackToMovies = { navController.navigate(AppDestination.AdminMovies.route) },
                 )
             }
         }
@@ -539,11 +618,14 @@ private fun AppNavHost(
             ) {
                 AdminShowtimesManagementScreen(
                     movies = appState.movies,
+                    rooms = appState.adminRooms,
                     showtimesByMovieId = appState.showtimesByMovieId,
                     onSaveShowtime = { movieId, index, showtime ->
                         coroutineScope.launch {
                             val existing = index?.let { appState.showtimesFor(movieId).getOrNull(it) }
-                            val room = appState.adminRooms.firstOrNull { it.name == showtime.room }
+                            val room = showtime.roomId?.let { roomId ->
+                                appState.adminRooms.firstOrNull { it.id == roomId }
+                            } ?: appState.adminRooms.firstOrNull { it.name == showtime.room }
                                 ?: appState.adminRooms.firstOrNull()
                             runCatching {
                                 withContext(Dispatchers.IO) {
@@ -551,8 +633,8 @@ private fun AppNavHost(
                                         token = appState.authToken,
                                         id = existing?.id ?: showtime.id,
                                         movieId = movieId,
-                                        roomId = existing?.roomId ?: showtime.roomId ?: room?.id ?: "1",
-                                        startsAt = existing?.startsAt ?: showtime.startsAt ?: adminDateTimeFrom(showtime.time),
+                                        roomId = showtime.roomId ?: room?.id ?: existing?.roomId ?: "1",
+                                        startsAt = adminDateTimeFrom(showtime.time, existing?.startsAt ?: showtime.startsAt),
                                         price = showtime.price,
                                     )
                                 }
@@ -573,7 +655,7 @@ private fun AppNavHost(
                 AdminConcessionsManagementScreen(
                     products = appState.concessions,
                     combos = appState.concessionCombos,
-                    onSaveProduct = { id, name, description, stock, price ->
+                    onSaveProduct = { id, name, description, cost, stock, price ->
                         coroutineScope.launch {
                             runCatching {
                                 withContext(Dispatchers.IO) {
@@ -582,6 +664,7 @@ private fun AppNavHost(
                                         id = id,
                                         name = name,
                                         category = description,
+                                        cost = cost,
                                         price = price,
                                         stock = stock,
                                     )
@@ -613,20 +696,47 @@ private fun AppNavHost(
             }
         }
         composable(AppDestination.AdminRooms.route) {
-            AdminModuleRoute(
+            AdminGuard(
                 isAdmin = appState.isAdmin(),
-                title = "Salas y butacas",
-                description = "Configura formatos, capacidad y distribución.",
-                navController = navController,
-            )
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminRoomsManagementScreen(
+                    rooms = appState.adminRooms,
+                    onSaveRoom = { id, name, rows, columns, inactiveSeats ->
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    catalogApi.saveRoom(
+                                        token = appState.authToken,
+                                        id = id,
+                                        name = name,
+                                        rows = rows,
+                                        columns = columns,
+                                        inactiveSeatLabels = inactiveSeats,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                            }
+                        }
+                    },
+                    onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                )
+            }
         }
         composable(AppDestination.AdminReports.route) {
-            AdminModuleRoute(
+            AdminGuard(
                 isAdmin = appState.isAdmin(),
-                title = "Ventas y estadísticas",
-                description = "Consulta reportes de boletos, dulcería y películas.",
-                navController = navController,
-            )
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminReportsScreen(
+                    metrics = appState.adminDashboardMetrics(),
+                    selectedRange = adminSalesRange,
+                    onRangeSelected = { range -> refreshAdminMetrics(range) },
+                    roomsCount = appState.adminRooms.size,
+                    onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                )
+            }
         }
     }
 }
@@ -644,34 +754,16 @@ private fun AdminGuard(
     }
 }
 
-@Composable
-private fun AdminModuleRoute(
-    isAdmin: Boolean,
-    title: String,
-    description: String,
-    navController: NavHostController,
-) {
-    AdminGuard(
-        isAdmin = isAdmin,
-        onBackToLogin = { navController.navigateToLogin() },
-    ) {
-        AdminModuleScreen(
-            title = title,
-            description = description,
-            onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
-        )
-    }
-}
-
 private fun NavHostController.navigateToLogin() {
     navigate(AppDestination.Login.route) {
         popUpTo(AppDestination.Splash.route)
     }
 }
 
-private fun adminDateTimeFrom(time: String): String {
+private fun adminDateTimeFrom(time: String, existingStartsAt: String? = null): String {
     val safeTime = if (Regex("\\d{2}:\\d{2}").matches(time)) time else "18:00"
-    return "2026-12-31T${safeTime}:00.000Z"
+    val datePrefix = existingStartsAt?.takeIf { it.length >= 10 }?.substring(0, 10) ?: "2026-12-31"
+    return "${datePrefix}T${safeTime}:00.000Z"
 }
 
 private fun currentTitle(route: String?): String {
@@ -680,6 +772,7 @@ private fun currentTitle(route: String?): String {
         AppDestination.Login.route -> AppDestination.Login.title
         AppDestination.Signup.route -> AppDestination.Signup.title
         AppDestination.Browse.route -> AppDestination.Browse.title
+        AppDestination.AllShowtimes.route -> AppDestination.AllShowtimes.title
         AppDestination.MovieDetail.route -> AppDestination.MovieDetail.title
         AppDestination.Showtimes.route -> AppDestination.Showtimes.title
         AppDestination.Seats.route -> AppDestination.Seats.title
@@ -701,6 +794,7 @@ private fun currentTitle(route: String?): String {
         AppDestination.Recommendations.route -> AppDestination.Recommendations.title
         AppDestination.AdminDashboard.route -> AppDestination.AdminDashboard.title
         AppDestination.AdminMovies.route -> AppDestination.AdminMovies.title
+        AppDestination.AdminMovieImport.route -> AppDestination.AdminMovieImport.title
         AppDestination.AdminShowtimes.route -> AppDestination.AdminShowtimes.title
         AppDestination.AdminConcessions.route -> AppDestination.AdminConcessions.title
         AppDestination.AdminRooms.route -> AppDestination.AdminRooms.title
@@ -709,15 +803,30 @@ private fun currentTitle(route: String?): String {
     }
 }
 
-private fun selectedTabIndex(route: String?): Int {
-    return when (route) {
-        AppDestination.Browse.route -> 0
-        AppDestination.TicketQr.route -> 1
-        AppDestination.SocialHub.route -> 2
-        AppDestination.History.route -> 3
-        AppDestination.Profile.route -> 4
-        else -> 0
+private fun bottomDestinationsFor(isAdmin: Boolean): List<AppDestination> {
+    return if (isAdmin) {
+        bottomBarDestinations.dropLast(1) + AppDestination.AdminDashboard
+    } else {
+        bottomBarDestinations
     }
+}
+
+private fun bottomTabsFor(isAdmin: Boolean): List<UiTabItem> {
+    return listOf(
+        UiTabItem("Cartelera", AppIcons.Home),
+        UiTabItem("Boletos", AppIcons.Tickets),
+        UiTabItem("Comunidad", AppIcons.Community),
+        UiTabItem("Historial", AppIcons.History),
+        if (isAdmin) {
+            UiTabItem("Dashboard", AppIcons.Movies)
+        } else {
+            UiTabItem("Perfil", AppIcons.Profile)
+        },
+    )
+}
+
+private fun selectedTabIndex(route: String?, destinations: List<AppDestination>): Int {
+    return destinations.indexOfFirst { it.route == route }.takeIf { it >= 0 } ?: 0
 }
 
 @Preview(showBackground = true)

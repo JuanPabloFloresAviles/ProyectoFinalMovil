@@ -50,15 +50,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.proyectofinalmovil.components.RemoteMoviePoster
 import com.example.proyectofinalmovil.components.UiLoader
+import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.mock.MockMovie
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun BrowseScreen(
     onMovieClick: (String) -> Unit,
+    onVerTodo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
@@ -179,7 +189,7 @@ fun BrowseScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            TextButton(onClick = { filtroActivo = "Todo" }) {
+            TextButton(onClick = onVerTodo) {
                 Text(
                     text = "Ver todo",
                     color = CinemaBlue,
@@ -206,6 +216,325 @@ fun BrowseScreen(
 }
 
 @Composable
+fun AllShowtimesScreen(
+    onShowtimeClick: (movieId: String, showtimeId: String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val appState = LocalAppUiState.current
+    var selectedDayOffset by remember { mutableStateOf(0) }
+    val selectedDateKey = remember(selectedDayOffset) { dateKeyForOffset(selectedDayOffset) }
+    val moviesWithShowtimes = appState.movies
+        .filter { movie ->
+            appState.showtimesFor(movie.id).any { it.matchesDate(selectedDateKey, selectedDayOffset) }
+        }
+        .sortedWith(compareByDescending<MockMovie> { it.isFeatured }.thenBy { it.title })
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AllShowtimesBackground)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        ShowtimesDateHeader(
+            dayOffset = selectedDayOffset,
+            onPreviousDay = { selectedDayOffset = (selectedDayOffset - 1).coerceAtLeast(0) },
+            onNextDay = { selectedDayOffset += 1 },
+        )
+
+        if (moviesWithShowtimes.isEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                color = Color.White,
+                border = androidx.compose.foundation.BorderStroke(1.dp, AllShowtimesBorder),
+            ) {
+                Text(
+                    text = "No hay funciones disponibles.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AllShowtimesMuted,
+                    modifier = Modifier.padding(18.dp),
+                )
+            }
+        } else {
+            moviesWithShowtimes.forEach { movie ->
+                MovieScheduleBlock(
+                    movie = movie,
+                    showtimes = appState.showtimesFor(movie.id)
+                        .filter { it.matchesDate(selectedDateKey, selectedDayOffset) }
+                        .distinctBy { it.id?.takeIf { id -> id.isNotBlank() } ?: "${it.startsAt}-${it.time}-${it.room}" }
+                        .sortedBy { it.startsAt ?: it.time },
+                    synopsis = appState.synopsisFor(movie.id).takeIf { it != "Sinopsis no disponible." }
+                        ?: movie.synopsis,
+                    onShowtimeClick = { showtime ->
+                        onShowtimeClick(movie.id, showtime.id?.takeIf { it.isNotBlank() } ?: "${movie.id}|${showtime.time}")
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShowtimesDateHeader(
+    dayOffset: Int,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DateNavButton(
+            text = "‹",
+            enabled = dayOffset > 0,
+            onClick = onPreviousDay,
+        )
+        Surface(
+            modifier = Modifier.weight(1f),
+            shape = MaterialTheme.shapes.large,
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, AllShowtimesBorder),
+        ) {
+            Text(
+                text = dateLabelForOffset(dayOffset),
+                modifier = Modifier.padding(vertical = 14.dp),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = AllShowtimesInk,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
+        DateNavButton(
+            text = "›",
+            enabled = true,
+            onClick = onNextDay,
+        )
+    }
+}
+
+@Composable
+private fun DateNavButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = MaterialTheme.shapes.large,
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, AllShowtimesBorder),
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = if (enabled) CinemaBlue else AllShowtimesMuted.copy(alpha = 0.45f),
+        )
+    }
+}
+
+@Composable
+private fun MovieScheduleBlock(
+    movie: MockMovie,
+    showtimes: List<MockShowtime>,
+    synopsis: String,
+    onShowtimeClick: (MockShowtime) -> Unit,
+) {
+    var showSynopsis by remember { mutableStateOf(false) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, AllShowtimesBorder),
+        shadowElevation = 2.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                RemoteMoviePoster(
+                    movie = movie,
+                    modifier = Modifier
+                        .width(104.dp)
+                        .aspectRatio(2f / 3f)
+                        .clip(MaterialTheme.shapes.medium),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = CinemaBlue,
+                        ) {
+                            Text(
+                                text = movie.classification,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                            )
+                        }
+                        Text(
+                            text = "|  ${movie.duration}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = AllShowtimesMuted,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = movie.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = AllShowtimesInk,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (synopsis.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(
+                            onClick = { showSynopsis = !showSynopsis },
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            Text(
+                                text = if (showSynopsis) "Ocultar sinopsis" else "Ver sinopsis",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CinemaBlue,
+                            )
+                        }
+                        if (showSynopsis) {
+                            Text(
+                                text = synopsis,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AllShowtimesMuted,
+                            )
+                        }
+                    }
+                }
+            }
+
+            ScheduleGroup(
+                title = "ESPAÑOL",
+                showtimes = showtimes.filterNot { it.format.contains("Subt", ignoreCase = true) },
+                onShowtimeClick = onShowtimeClick,
+            )
+            ScheduleGroup(
+                title = "SUBTITULADA",
+                showtimes = showtimes.filter { it.format.contains("Subt", ignoreCase = true) },
+                onShowtimeClick = onShowtimeClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScheduleGroup(
+    title: String,
+    showtimes: List<MockShowtime>,
+    onShowtimeClick: (MockShowtime) -> Unit,
+) {
+    if (showtimes.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = title,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = AllShowtimesInk,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        showtimes.chunked(3).forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                rowItems.forEach { showtime ->
+                    ShowtimePill(
+                        showtime = showtime,
+                        onClick = { onShowtimeClick(showtime) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                repeat(3 - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShowtimePill(
+    showtime: MockShowtime,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(54.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = CinemaBlue.copy(alpha = 0.1f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CinemaBlue.copy(alpha = 0.22f)),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = showtime.time,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = CinemaBlue,
+            )
+        }
+    }
+}
+
+private fun MockShowtime.matchesDate(dateKey: String, selectedDayOffset: Int): Boolean {
+    val startsAtKey = laPazDateKey(startsAt)
+    if (startsAtKey == null) return selectedDayOffset == 0
+    return startsAtKey == dateKey
+}
+
+private fun dateKeyForOffset(dayOffset: Int): String {
+    val calendar = Calendar.getInstance()
+    calendar.add(Calendar.DAY_OF_YEAR, dayOffset)
+    return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
+}
+
+private fun dateLabelForOffset(dayOffset: Int): String {
+    val calendar = Calendar.getInstance()
+    calendar.add(Calendar.DAY_OF_YEAR, dayOffset)
+    val date = SimpleDateFormat("dd MMM", Locale.forLanguageTag("es-MX")).format(calendar.time)
+    return when (dayOffset) {
+        0 -> "Hoy $date"
+        1 -> "Mañana $date"
+        else -> date.replaceFirstChar { char -> char.uppercase() }
+    }
+}
+
+private val LaPazZone: ZoneId = ZoneId.of("America/Mazatlan")
+private val LaPazDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+private fun laPazDateKey(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    return runCatching {
+        Instant.parse(value).atZone(LaPazZone).format(LaPazDateFormatter)
+    }.getOrElse {
+        value.takeIf { it.length >= 10 }?.substring(0, 10)
+    }
+}
+
+@Composable
 private fun PeliculaDestacadaCard(
     movie: MockMovie,
     onComprarClick: () -> Unit,
@@ -216,13 +545,12 @@ private fun PeliculaDestacadaCard(
     Box(
         modifier = modifier
             .clip(MaterialTheme.shapes.large)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(movie.accentStart, movie.accentEnd),
-                )
-            )
             .aspectRatio(4f / 3f),
     ) {
+        RemoteMoviePoster(
+            movie = movie,
+            modifier = Modifier.fillMaxSize(),
+        )
         Surface(
             modifier = Modifier
                 .padding(16.dp)
@@ -367,13 +695,12 @@ private fun TarjetaPelicula(
             .width(130.dp)
             .aspectRatio(2f / 3f)
             .clip(MaterialTheme.shapes.large)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(movie.accentStart, movie.accentEnd),
-                )
-            )
             .clickable(onClick = onClick),
     ) {
+        RemoteMoviePoster(
+            movie = movie,
+            modifier = Modifier.fillMaxSize(),
+        )
         Text(
             text = "CineUABCS · ${movie.year}",
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
@@ -411,6 +738,11 @@ private fun TarjetaPelicula(
 @Composable
 private fun BrowseScreenPreview() {
     ProyectoFinalMovilTheme {
-        BrowseScreen(onMovieClick = {})
+        BrowseScreen(onMovieClick = {}, onVerTodo = {})
     }
 }
+
+private val AllShowtimesBackground = Color(0xFFF9F6EB)
+private val AllShowtimesInk = Color(0xFF102A43)
+private val AllShowtimesBorder = Color(0xFFD6D1C2)
+private val AllShowtimesMuted = Color(0xFF6B7280)

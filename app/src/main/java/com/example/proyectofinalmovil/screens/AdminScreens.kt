@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.state.AdminDashboardMetrics
+import com.example.proyectofinalmovil.services.state.AdminSalesRange
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 private val AdminNavy = Color(0xFF102A43)
@@ -48,6 +50,8 @@ private val AdminMist = Color(0xFFEAF2FA)
 @Composable
 fun AdminDashboardScreen(
     metrics: AdminDashboardMetrics,
+    selectedRange: AdminSalesRange,
+    onRangeSelected: (AdminSalesRange) -> Unit,
     moviesCount: Int,
     showtimesCount: Int,
     concessionsCount: Int,
@@ -73,6 +77,11 @@ fun AdminDashboardScreen(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.ExtraBold,
             color = AdminNavy,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        AdminRangeSelector(
+            selectedRange = selectedRange,
+            onRangeSelected = onRangeSelected,
         )
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -411,6 +420,37 @@ private fun AdminIcon(icon: ImageVector) {
     }
 }
 
+@Composable
+private fun AdminRangeSelector(
+    selectedRange: AdminSalesRange,
+    onRangeSelected: (AdminSalesRange) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AdminSalesRange.entries.forEach { range ->
+            val selected = range == selectedRange
+            Surface(
+                onClick = { onRangeSelected(range) },
+                shape = CircleShape,
+                color = if (selected) AdminBlue else Color.White,
+                border = BorderStroke(1.dp, AdminBlue.copy(alpha = if (selected) 1f else 0.25f)),
+            ) {
+                Text(
+                    text = range.label,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (selected) Color.White else AdminBlue,
+                )
+            }
+        }
+    }
+}
+
 private fun money(value: Int): String = "$$value"
 
 @Preview(showBackground = true, backgroundColor = 0xFFFFF6EA)
@@ -426,6 +466,8 @@ private fun AdminDashboardPreview() {
                 preferredRoomFormat = "Tradicional",
                 preferredRoomOccupancyPercent = 64,
             ),
+            selectedRange = AdminSalesRange.LAST_7_DAYS,
+            onRangeSelected = {},
             moviesCount = 7,
             showtimesCount = 8,
             concessionsCount = 6,

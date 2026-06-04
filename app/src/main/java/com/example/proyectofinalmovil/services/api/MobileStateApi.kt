@@ -8,6 +8,8 @@ import com.example.proyectofinalmovil.services.mock.MockReview
 import com.example.proyectofinalmovil.services.mock.MockSocialUser
 import com.example.proyectofinalmovil.services.mock.MockUserProfile
 import com.example.proyectofinalmovil.services.state.AdminDashboardMetrics
+import com.example.proyectofinalmovil.services.state.AdminReportItem
+import com.example.proyectofinalmovil.services.state.AdminSalesRange
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -30,8 +32,8 @@ class MobileStateApi(
         return parseUserState(JSONObject(client.get("mobile/user/state", token)))
     }
 
-    fun getAdminMetrics(token: String): AdminDashboardMetrics {
-        val json = JSONObject(client.get("mobile/admin/metrics", token))
+    fun getAdminMetrics(token: String, range: AdminSalesRange = AdminSalesRange.LAST_7_DAYS): AdminDashboardMetrics {
+        val json = JSONObject(client.get("mobile/admin/metrics?rango=${range.apiValue}", token))
         return AdminDashboardMetrics(
             averagePurchase = json.optInt("averagePurchase", 0),
             ticketSales = json.optInt("ticketSales", 0),
@@ -39,6 +41,12 @@ class MobileStateApi(
             transactions = json.optInt("transactions", 0),
             preferredRoomFormat = json.optString("preferredRoomFormat", "Sin datos"),
             preferredRoomOccupancyPercent = json.optInt("preferredRoomOccupancyPercent", 0),
+            ticketsSold = json.optInt("ticketsSold", 0),
+            roomOccupancyPercent = json.optInt("roomOccupancyPercent", 0),
+            lowStockCount = json.optInt("lowStockCount", 0),
+            topMovies = parseReportItems(json.optJSONArray("topMovies") ?: JSONArray()),
+            topProducts = parseReportItems(json.optJSONArray("topProducts") ?: JSONArray()),
+            salesSeries = parseReportItems(json.optJSONArray("salesSeries") ?: JSONArray()),
         )
     }
 
@@ -104,6 +112,12 @@ class MobileStateApi(
                         status = item.optString("status", ""),
                         ticketTotal = item.optInt("ticketTotal", 0),
                         concessionsTotal = item.optInt("concessionsTotal", 0),
+                        qrCode = item.optString("qrCode", ""),
+                        qrExpiresAtMillis = if (item.has("qrExpiresAtMillis")) {
+                            item.optLong("qrExpiresAtMillis")
+                        } else {
+                            null
+                        },
                     ),
                 )
             }
@@ -166,6 +180,22 @@ class MobileStateApi(
 
     private fun parseStringList(json: JSONArray): List<String> {
         return List(json.length()) { index -> json.getString(index) }
+    }
+
+    private fun parseReportItems(json: JSONArray): List<AdminReportItem> {
+        return buildList {
+            for (index in 0 until json.length()) {
+                val item = json.getJSONObject(index)
+                add(
+                    AdminReportItem(
+                        label = item.optString("label", ""),
+                        value = item.optInt("value", 0),
+                        detail = item.optString("detail", ""),
+                        secondaryValue = if (item.has("secondaryValue")) item.optInt("secondaryValue", 0) else null,
+                    ),
+                )
+            }
+        }
     }
 }
 

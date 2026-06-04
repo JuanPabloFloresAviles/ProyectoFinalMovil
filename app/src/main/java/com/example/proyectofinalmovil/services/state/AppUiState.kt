@@ -20,6 +20,7 @@ import com.example.proyectofinalmovil.services.mock.MockReview
 import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.mock.MockSocialUser
 import com.example.proyectofinalmovil.services.mock.MockUserProfile
+import com.example.proyectofinalmovil.services.tickets.TicketQrVisibility
 import com.example.proyectofinalmovil.services.mock.generosFiltro
 import com.example.proyectofinalmovil.services.mock.mockSynopsis
 import com.example.proyectofinalmovil.services.mock.mockCast
@@ -78,6 +79,28 @@ class AppUiState {
         signedInName = session.name
         authToken = session.token
         userRole = userRoleFromApi(session.role)
+    }
+
+    fun signOut() {
+        signedInEmail = ""
+        signedInName = ""
+        authToken = ""
+        userRole = UserRole.CLIENT
+        userProfile = emptyUserProfile()
+        purchases.clear()
+        reviews.clear()
+        chatMessages.clear()
+        recommendations.clear()
+        socialUsers.clear()
+        friendIds.clear()
+        incomingRequestIds.clear()
+        outgoingRequestIds.clear()
+        selectedChatFriendId = ""
+        selectedRecommendationFriendId = ""
+        activePurchaseFolio = ""
+        selectedSeatIds.clear()
+        concessionQuantities.clear()
+        adminMetrics = null
     }
 
     fun isAdmin(): Boolean = userRole == UserRole.ADMIN
@@ -263,8 +286,9 @@ class AppUiState {
     fun checkoutSeatLabels(): List<String> = selectedSeatIds.sorted()
 
     fun confirmCheckout(): MockPurchase {
+        val folio = generatePurchaseFolio()
         val purchase = MockPurchase(
-            folio = generatePurchaseFolio(),
+            folio = folio,
             email = DEFAULT_PURCHASE_EMAIL,
             movieId = selectedMovieId,
             date = "Hoy",
@@ -274,6 +298,7 @@ class AppUiState {
             status = "Activa",
             ticketTotal = ticketTotal(),
             concessionsTotal = concessionTotal(),
+            qrCode = folio,
         )
         purchases.add(0, purchase)
         activePurchaseFolio = purchase.folio
@@ -283,6 +308,13 @@ class AppUiState {
     fun activePurchase(): MockPurchase = purchases.firstOrNull { it.folio == activePurchaseFolio }
         ?: purchases.firstOrNull()
         ?: emptyPurchase()
+
+    fun activeQrPurchase(nowMillis: Long = System.currentTimeMillis()): MockPurchase? {
+        val selected = purchases.firstOrNull {
+            it.folio == activePurchaseFolio && TicketQrVisibility.isVisible(it, nowMillis)
+        }
+        return selected ?: purchases.firstOrNull { TicketQrVisibility.isVisible(it, nowMillis) }
+    }
 
     fun recoverPurchase(folio: String, email: String): MockPurchase? {
         return purchases.firstOrNull {
@@ -392,7 +424,7 @@ class AppUiState {
     }
 
     private fun showtimeId(movieId: String, showtime: MockShowtime): String {
-        return "$movieId|${showtime.time}"
+        return showtime.id?.takeIf { it.isNotBlank() } ?: "$movieId|${showtime.time}"
     }
 
     private fun uniqueIdFrom(value: String, existingIds: List<String>): String {
