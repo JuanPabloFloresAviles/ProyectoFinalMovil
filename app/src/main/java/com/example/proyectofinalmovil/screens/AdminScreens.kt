@@ -329,7 +329,7 @@ private fun PreferredFormatCard(metrics: AdminDashboardMetrics) {
             AdminIcon(Icons.Rounded.Analytics)
             Column {
                 Text(
-                    text = "FORMATO PREFERIDO",
+                    text = "HORARIO PREFERIDO",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = AdminBlue,

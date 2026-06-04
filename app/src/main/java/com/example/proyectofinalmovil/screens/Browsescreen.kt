@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.proyectofinalmovil.components.UiLoader
 import com.example.proyectofinalmovil.services.mock.MockMovie
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
@@ -61,7 +62,19 @@ fun BrowseScreen(
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
-    val destacada = appState.movies.first { it.isFeatured }
+    if (appState.movies.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            UiLoader(text = "Cargando cartelera desde la base de datos...")
+        }
+        return
+    }
+
+    val destacada = appState.movies.firstOrNull { it.isFeatured } ?: appState.movies.first()
 
     var filtroActivo by remember { mutableStateOf("Estrenos") }
 

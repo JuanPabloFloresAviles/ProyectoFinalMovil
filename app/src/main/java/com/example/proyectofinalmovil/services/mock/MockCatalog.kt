@@ -142,6 +142,10 @@ data class MockShowtime(
     val format: String,
     val price: Int,
     val availableSeats: Int,
+    val id: String? = null,
+    val movieId: String? = null,
+    val roomId: String? = null,
+    val startsAt: String? = null,
 )
 
 val mockShowtimesEstacion7 = listOf(
@@ -428,6 +432,7 @@ data class MockConcessionItem(
     val description: String,
     val cost: Int,
     val price: Int,
+    val stock: Int = 0,
 )
 
 val mockConcessions = listOf(

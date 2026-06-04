@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,12 +50,17 @@ import com.example.proyectofinalmovil.screens.RecommendMovieScreen
 import com.example.proyectofinalmovil.screens.RecommendationsScreen
 import com.example.proyectofinalmovil.screens.AdminAccessDeniedScreen
 import com.example.proyectofinalmovil.screens.AdminDashboardScreen
+import com.example.proyectofinalmovil.screens.AdminConcessionsManagementScreen
+import com.example.proyectofinalmovil.screens.AdminMoviesManagementScreen
 import com.example.proyectofinalmovil.screens.AdminModuleScreen
+import com.example.proyectofinalmovil.screens.AdminShowtimesManagementScreen
 import com.example.proyectofinalmovil.services.state.AppUiState
 import com.example.proyectofinalmovil.services.state.ProvideAppUiState
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.services.api.AuthApi
 import com.example.proyectofinalmovil.services.api.AuthException
+import com.example.proyectofinalmovil.services.api.CatalogApi
+import com.example.proyectofinalmovil.services.api.MobileStateApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -118,7 +124,17 @@ private fun AppNavHost(
 ) {
     val appState = LocalAppUiState.current
     val authApi = remember { AuthApi() }
+    val catalogApi = remember { CatalogApi() }
+    val mobileStateApi = remember { MobileStateApi() }
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            withContext(Dispatchers.IO) { catalogApi.getCatalog() }
+        }.onSuccess { snapshot ->
+            appState.replaceCatalog(snapshot)
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -145,6 +161,28 @@ private fun AppNavHost(
                                 authApi.login(email, password)
                             }
                             appState.signIn(session)
+                            runCatching {
+                                withContext(Dispatchers.IO) { catalogApi.getCatalog() }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                            }
+                            if (appState.isAdmin()) {
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        mobileStateApi.getAdminMetrics(session.token)
+                                    }
+                                }.onSuccess { metrics ->
+                                    appState.replaceAdminMetrics(metrics)
+                                }
+                            } else {
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        mobileStateApi.getUserState(session.token)
+                                    }
+                                }.onSuccess { snapshot ->
+                                    appState.replaceUserState(snapshot)
+                                }
+                            }
                             val destination = if (appState.isAdmin()) {
                                 AppDestination.AdminDashboard
                             } else {
@@ -394,18 +432,31 @@ private fun AppNavHost(
         }
         composable(AppDestination.PrivateChat.route) {
             val friend = appState.socialUsers.find { it.id == appState.selectedChatFriendId }
-                ?: appState.socialUsers.first()
-            PrivateChatScreen(
-                friend = friend,
-                messages = appState.chatMessages,
-                onSendMessage = { text ->
-                    appState.sendChatMessage(friend.id, text)
-                },
-                onRecommendMovie = {
-                    appState.selectedRecommendationFriendId = friend.id
-                    navController.navigate(AppDestination.RecommendMovie.route)
-                },
-            )
+            if (friend == null) {
+                ChatListScreen(
+                    friends = appState.friendUsers(),
+                    messages = appState.chatMessages,
+                    onOpenChat = { userId ->
+                        appState.selectedChatFriendId = userId
+                        navController.navigate(AppDestination.PrivateChat.route)
+                    },
+                    onVerRecomendaciones = {
+                        navController.navigate(AppDestination.Recommendations.route)
+                    },
+                )
+            } else {
+                PrivateChatScreen(
+                    friend = friend,
+                    messages = appState.chatMessages,
+                    onSendMessage = { text ->
+                        appState.sendChatMessage(friend.id, text)
+                    },
+                    onRecommendMovie = {
+                        appState.selectedRecommendationFriendId = friend.id
+                        navController.navigate(AppDestination.RecommendMovie.route)
+                    },
+                )
+            }
         }
         composable(AppDestination.RecommendMovie.route) {
             val friends = appState.friendUsers()
@@ -453,28 +504,113 @@ private fun AppNavHost(
             }
         }
         composable(AppDestination.AdminMovies.route) {
-            AdminModuleRoute(
+            AdminGuard(
                 isAdmin = appState.isAdmin(),
-                title = "Gestión de películas",
-                description = "Administra los títulos que aparecen en cartelera.",
-                navController = navController,
-            )
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminMoviesManagementScreen(
+                    movies = appState.movies,
+                    onSaveMovie = { id, title, genre, classification, duration, rating, year ->
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    catalogApi.saveMovie(
+                                        token = appState.authToken,
+                                        id = id,
+                                        title = title,
+                                        synopsis = "Sinopsis pendiente por capturar.",
+                                        classification = classification,
+                                        durationMinutes = duration.filter { it.isDigit() }.toIntOrNull() ?: 90,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                            }
+                        }
+                    },
+                    onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                )
+            }
         }
         composable(AppDestination.AdminShowtimes.route) {
-            AdminModuleRoute(
+            AdminGuard(
                 isAdmin = appState.isAdmin(),
-                title = "Gestión de funciones",
-                description = "Programa horarios, salas, precios y estados.",
-                navController = navController,
-            )
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminShowtimesManagementScreen(
+                    movies = appState.movies,
+                    showtimesByMovieId = appState.showtimesByMovieId,
+                    onSaveShowtime = { movieId, index, showtime ->
+                        coroutineScope.launch {
+                            val existing = index?.let { appState.showtimesFor(movieId).getOrNull(it) }
+                            val room = appState.adminRooms.firstOrNull { it.name == showtime.room }
+                                ?: appState.adminRooms.firstOrNull()
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    catalogApi.saveShowtime(
+                                        token = appState.authToken,
+                                        id = existing?.id ?: showtime.id,
+                                        movieId = movieId,
+                                        roomId = existing?.roomId ?: showtime.roomId ?: room?.id ?: "1",
+                                        startsAt = existing?.startsAt ?: showtime.startsAt ?: adminDateTimeFrom(showtime.time),
+                                        price = showtime.price,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                            }
+                        }
+                    },
+                    onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                )
+            }
         }
         composable(AppDestination.AdminConcessions.route) {
-            AdminModuleRoute(
+            AdminGuard(
                 isAdmin = appState.isAdmin(),
-                title = "Gestión de dulcería",
-                description = "Mantén productos, combos, stock y precios.",
-                navController = navController,
-            )
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminConcessionsManagementScreen(
+                    products = appState.concessions,
+                    combos = appState.concessionCombos,
+                    onSaveProduct = { id, name, description, stock, price ->
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    catalogApi.saveProduct(
+                                        token = appState.authToken,
+                                        id = id,
+                                        name = name,
+                                        category = description,
+                                        price = price,
+                                        stock = stock,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                            }
+                        }
+                    },
+                    onSaveCombo = { id, name, description, price, productIds ->
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    catalogApi.saveCombo(
+                                        token = appState.authToken,
+                                        id = id,
+                                        name = name,
+                                        price = price,
+                                        productIds = productIds,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                            }
+                        }
+                    },
+                    onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                )
+            }
         }
         composable(AppDestination.AdminRooms.route) {
             AdminModuleRoute(
@@ -531,6 +667,11 @@ private fun NavHostController.navigateToLogin() {
     navigate(AppDestination.Login.route) {
         popUpTo(AppDestination.Splash.route)
     }
+}
+
+private fun adminDateTimeFrom(time: String): String {
+    val safeTime = if (Regex("\\d{2}:\\d{2}").matches(time)) time else "18:00"
+    return "2026-12-31T${safeTime}:00.000Z"
 }
 
 private fun currentTitle(route: String?): String {
