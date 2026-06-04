@@ -6,7 +6,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import com.example.proyectofinalmovil.services.api.AuthSession
+import com.example.proyectofinalmovil.services.api.CatalogSnapshot
+import com.example.proyectofinalmovil.services.api.AdminRoomOption
+import com.example.proyectofinalmovil.services.api.MobileUserSnapshot
 import com.example.proyectofinalmovil.services.mock.MockChatMessage
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
 import com.example.proyectofinalmovil.services.mock.MockMovie
@@ -17,46 +21,45 @@ import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.mock.MockSocialUser
 import com.example.proyectofinalmovil.services.mock.MockUserProfile
 import com.example.proyectofinalmovil.services.mock.generosFiltro
-import com.example.proyectofinalmovil.services.mock.mockChatMessages
-import com.example.proyectofinalmovil.services.mock.mockConcessions
-import com.example.proyectofinalmovil.services.mock.mockIncomingRequestIds
-import com.example.proyectofinalmovil.services.mock.mockInitialFriendIds
-import com.example.proyectofinalmovil.services.mock.mockMovies
-import com.example.proyectofinalmovil.services.mock.mockOutgoingRequestIds
-import com.example.proyectofinalmovil.services.mock.mockPurchases
-import com.example.proyectofinalmovil.services.mock.mockRecommendations
-import com.example.proyectofinalmovil.services.mock.mockReviews
-import com.example.proyectofinalmovil.services.mock.mockShowtimesByMovieId
-import com.example.proyectofinalmovil.services.mock.mockSocialUsers
 import com.example.proyectofinalmovil.services.mock.mockSynopsis
 import com.example.proyectofinalmovil.services.mock.mockCast
-import com.example.proyectofinalmovil.services.mock.mockUserProfile
 
 private const val DEFAULT_PURCHASE_EMAIL = "invitado@cineuabcs.mx"
 
+data class AdminConcessionCombo(
+    val id: String,
+    val name: String,
+    val description: String,
+    val price: Int,
+    val productIds: List<String>,
+)
+
 @Stable
 class AppUiState {
-    val movies: List<MockMovie> = mockMovies
-    val showtimesByMovieId: Map<String, List<MockShowtime>> = mockShowtimesByMovieId
-    val concessions: List<MockConcessionItem> = mockConcessions
-    val userProfile: MockUserProfile = mockUserProfile
-    val socialUsers: List<MockSocialUser> = mockSocialUsers
+    val movies = mutableStateListOf<MockMovie>()
+    val showtimesByMovieId = mutableStateMapOf<String, List<MockShowtime>>()
+    val concessions = mutableStateListOf<MockConcessionItem>()
+    val concessionCombos = mutableStateListOf<AdminConcessionCombo>()
+    val adminRooms = mutableStateListOf<AdminRoomOption>()
+    var userProfile by mutableStateOf(emptyUserProfile())
+        private set
+    val socialUsers = mutableStateListOf<MockSocialUser>()
     val genres: List<String> = generosFiltro
 
-    val purchases = mutableStateListOf<MockPurchase>().apply { addAll(mockPurchases) }
-    val reviews = mutableStateListOf<MockReview>().apply { addAll(mockReviews) }
-    val chatMessages = mutableStateListOf<MockChatMessage>().apply { addAll(mockChatMessages) }
-    val recommendations = mutableStateListOf<MockMovieRecommendation>().apply { addAll(mockRecommendations) }
+    val purchases = mutableStateListOf<MockPurchase>()
+    val reviews = mutableStateListOf<MockReview>()
+    val chatMessages = mutableStateListOf<MockChatMessage>()
+    val recommendations = mutableStateListOf<MockMovieRecommendation>()
 
-    val friendIds = mutableStateListOf<String>().apply { addAll(mockInitialFriendIds) }
-    val incomingRequestIds = mutableStateListOf<String>().apply { addAll(mockIncomingRequestIds) }
-    val outgoingRequestIds = mutableStateListOf<String>().apply { addAll(mockOutgoingRequestIds) }
+    val friendIds = mutableStateListOf<String>()
+    val incomingRequestIds = mutableStateListOf<String>()
+    val outgoingRequestIds = mutableStateListOf<String>()
 
-    var selectedMovieId by mutableStateOf(defaultFeaturedMovieId())
-    var selectedShowtimeId by mutableStateOf(defaultShowtimeId())
-    var selectedChatFriendId by mutableStateOf(mockInitialFriendIds.first())
-    var selectedRecommendationFriendId by mutableStateOf(mockInitialFriendIds.first())
-    var activePurchaseFolio by mutableStateOf(initialActivePurchase()?.folio ?: mockPurchases.first().folio)
+    var selectedMovieId by mutableStateOf("")
+    var selectedShowtimeId by mutableStateOf("")
+    var selectedChatFriendId by mutableStateOf("")
+    var selectedRecommendationFriendId by mutableStateOf("")
+    var activePurchaseFolio by mutableStateOf("")
     var signedInEmail by mutableStateOf("")
         private set
     var signedInName by mutableStateOf("")
@@ -65,6 +68,7 @@ class AppUiState {
         private set
     var userRole by mutableStateOf(UserRole.CLIENT)
         private set
+    private var adminMetrics by mutableStateOf<AdminDashboardMetrics?>(null)
 
     val selectedSeatIds = mutableStateListOf<String>()
     val concessionQuantities = mutableStateMapOf<String, Int>()
@@ -79,10 +83,136 @@ class AppUiState {
     fun isAdmin(): Boolean = userRole == UserRole.ADMIN
 
     fun adminDashboardMetrics(): AdminDashboardMetrics {
-        return calculateAdminDashboardMetrics(
+        return adminMetrics ?: calculateAdminDashboardMetrics(
             purchases = purchases,
             showtimesByMovieId = showtimesByMovieId,
         )
+    }
+
+    fun replaceAdminMetrics(metrics: AdminDashboardMetrics) {
+        adminMetrics = metrics
+    }
+
+    fun replaceCatalog(snapshot: CatalogSnapshot) {
+        if (snapshot.movies.isNotEmpty()) {
+            movies.clear()
+            movies.addAll(snapshot.movies)
+            selectedMovieId = defaultFeaturedMovieId()
+        }
+        showtimesByMovieId.clear()
+        showtimesByMovieId.putAll(snapshot.showtimesByMovieId)
+        selectedShowtimeId = defaultShowtimeId()
+        concessions.clear()
+        concessions.addAll(snapshot.concessions)
+        concessionCombos.clear()
+        concessionCombos.addAll(snapshot.combos)
+        adminRooms.clear()
+        adminRooms.addAll(snapshot.rooms)
+        concessionQuantities.clear()
+    }
+
+    fun replaceUserState(snapshot: MobileUserSnapshot) {
+        userProfile = snapshot.profile
+        socialUsers.clear()
+        socialUsers.addAll(snapshot.socialUsers)
+        purchases.clear()
+        purchases.addAll(snapshot.purchases)
+        reviews.clear()
+        reviews.addAll(snapshot.reviews)
+        chatMessages.clear()
+        chatMessages.addAll(snapshot.chatMessages)
+        recommendations.clear()
+        recommendations.addAll(snapshot.recommendations)
+        friendIds.clear()
+        friendIds.addAll(snapshot.friendIds)
+        incomingRequestIds.clear()
+        incomingRequestIds.addAll(snapshot.incomingRequestIds)
+        outgoingRequestIds.clear()
+        outgoingRequestIds.addAll(snapshot.outgoingRequestIds)
+        selectedChatFriendId = friendIds.firstOrNull() ?: ""
+        selectedRecommendationFriendId = friendIds.firstOrNull() ?: ""
+        activePurchaseFolio = initialActivePurchase()?.folio ?: ""
+    }
+
+    fun upsertMovie(
+        id: String?,
+        title: String,
+        genre: String,
+        classification: String,
+        duration: String,
+        rating: String,
+        year: String,
+    ) {
+        val safeId = id ?: uniqueIdFrom(title, movies.map { it.id })
+        val existingIndex = movies.indexOfFirst { it.id == safeId }
+        val current = movies.getOrNull(existingIndex)
+        val movie = MockMovie(
+            id = safeId,
+            title = title.trim(),
+            genre = genre.trim(),
+            classification = classification.trim().ifBlank { "A" },
+            duration = duration.trim().ifBlank { "90 min" },
+            rating = rating.trim().ifBlank { "4.0" },
+            year = year.trim().ifBlank { "2026" },
+            accentStart = current?.accentStart ?: Color(0xFF1E5AA8),
+            accentEnd = current?.accentEnd ?: Color(0xFF102A43),
+            isFeatured = current?.isFeatured ?: false,
+            isNew = current?.isNew ?: true,
+        )
+        if (existingIndex >= 0) {
+            movies[existingIndex] = movie
+        } else {
+            movies.add(0, movie)
+            showtimesByMovieId[safeId] = listOf(defaultAdminShowtime())
+        }
+    }
+
+    fun upsertShowtime(movieId: String, index: Int?, showtime: MockShowtime) {
+        val showtimes = showtimesFor(movieId).toMutableList()
+        if (index != null && index in showtimes.indices) {
+            showtimes[index] = showtime
+        } else {
+            showtimes.add(showtime)
+        }
+        showtimesByMovieId[movieId] = showtimes
+    }
+
+    fun upsertConcessionItem(
+        id: String?,
+        name: String,
+        description: String,
+        cost: Int,
+        price: Int,
+    ) {
+        val safeId = id ?: uniqueIdFrom(name, concessions.map { it.id })
+        val item = MockConcessionItem(
+            id = safeId,
+            name = name.trim(),
+            description = description.trim(),
+            cost = cost.coerceAtLeast(0),
+            price = price.coerceAtLeast(0),
+        )
+        val index = concessions.indexOfFirst { it.id == safeId }
+        if (index >= 0) concessions[index] = item else concessions.add(0, item)
+    }
+
+    fun upsertConcessionCombo(
+        id: String?,
+        name: String,
+        description: String,
+        price: Int,
+        productIds: List<String>,
+    ) {
+        val safeId = id ?: uniqueIdFrom(name, concessionCombos.map { it.id })
+        val combo = AdminConcessionCombo(
+            id = safeId,
+            name = name.trim(),
+            description = description.trim(),
+            price = price.coerceAtLeast(0),
+            productIds = productIds,
+        )
+        val index = concessionCombos.indexOfFirst { it.id == safeId }
+        if (index >= 0) concessionCombos[index] = combo else concessionCombos.add(0, combo)
     }
 
     fun selectMovie(movieId: String) {
@@ -151,7 +281,8 @@ class AppUiState {
     }
 
     fun activePurchase(): MockPurchase = purchases.firstOrNull { it.folio == activePurchaseFolio }
-        ?: purchases.first()
+        ?: purchases.firstOrNull()
+        ?: emptyPurchase()
 
     fun recoverPurchase(folio: String, email: String): MockPurchase? {
         return purchases.firstOrNull {
@@ -165,7 +296,7 @@ class AppUiState {
     }
 
     fun showtimesFor(movieId: String): List<MockShowtime> {
-        return showtimesByMovieId[movieId] ?: showtimesByMovieId.values.first()
+        return showtimesByMovieId[movieId] ?: emptyList()
     }
 
     fun synopsisFor(movieId: String): String = mockSynopsis[movieId] ?: "Sinopsis no disponible."
@@ -232,17 +363,18 @@ class AppUiState {
     }
 
     private fun movieById(movieId: String): MockMovie {
-        return movies.find { it.id == movieId } ?: movies.first()
+        return movies.find { it.id == movieId } ?: fallbackMovie()
     }
 
     private fun showtimeForCurrentSelection(): MockShowtime {
         val movieShowtimes = showtimesFor(selectedMovieId)
         return movieShowtimes.firstOrNull { showtimeId(selectedMovieId, it) == selectedShowtimeId }
-            ?: movieShowtimes.first()
+            ?: movieShowtimes.firstOrNull()
+            ?: defaultAdminShowtime()
     }
 
     private fun defaultFeaturedMovieId(): String {
-        return movies.firstOrNull { it.isFeatured }?.id ?: movies.first().id
+        return movies.firstOrNull { it.isFeatured }?.id ?: movies.firstOrNull()?.id ?: ""
     }
 
     private fun defaultShowtimeId(): String {
@@ -262,4 +394,71 @@ class AppUiState {
     private fun showtimeId(movieId: String, showtime: MockShowtime): String {
         return "$movieId|${showtime.time}"
     }
+
+    private fun uniqueIdFrom(value: String, existingIds: List<String>): String {
+        val base = value
+            .trim()
+            .lowercase()
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
+            .ifBlank { "nuevo-registro" }
+        var candidate = base
+        var suffix = 2
+        while (candidate in existingIds) {
+            candidate = "$base-$suffix"
+            suffix += 1
+        }
+        return candidate
+    }
+
+    private fun defaultAdminShowtime(): MockShowtime {
+        return MockShowtime(
+            time = "18:00",
+            room = "Sala 1",
+            roomType = "Tradicional",
+            format = "2D · Dob.",
+            price = 55,
+            availableSeats = 80,
+        )
+    }
+
+    private fun fallbackMovie(): MockMovie {
+        return MockMovie(
+            id = "sin-catalogo",
+            title = "Catálogo no disponible",
+            genre = "Cartelera",
+            classification = "A",
+            duration = "0 min",
+            rating = "0.0",
+            accentStart = Color(0xFF1E5AA8),
+            accentEnd = Color(0xFF102A43),
+        )
+    }
+}
+
+private fun emptyUserProfile(): MockUserProfile {
+    return MockUserProfile(
+        name = "",
+        email = "",
+        phone = "",
+        studentId = "",
+        favoriteGenre = "Cartelera",
+        memberSince = "",
+        initials = "CU",
+    )
+}
+
+private fun emptyPurchase(): MockPurchase {
+    return MockPurchase(
+        folio = "",
+        email = "",
+        movieId = "",
+        date = "",
+        time = "",
+        room = "",
+        seats = emptyList(),
+        status = "",
+        ticketTotal = 0,
+        concessionsTotal = 0,
+    )
 }

@@ -13,11 +13,14 @@ class ApiException(
 class CineUabcsApiClient(
     private val config: CineUabcsApiConfig = CineUabcsApiConfig(),
 ) {
-    fun get(path: String): String {
+    fun get(path: String, bearerToken: String? = null): String {
         val connection = URL(config.endpoint(path)).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 10_000
         connection.readTimeout = 10_000
+        if (!bearerToken.isNullOrBlank()) {
+            connection.setRequestProperty("Authorization", "Bearer $bearerToken")
+        }
 
         return try {
             val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
@@ -31,13 +34,16 @@ class CineUabcsApiClient(
         }
     }
 
-    fun postJson(path: String, jsonBody: String): String {
+    fun postJson(path: String, jsonBody: String, bearerToken: String? = null): String {
         val connection = URL(config.endpoint(path)).openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
         connection.connectTimeout = 10_000
         connection.readTimeout = 10_000
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        if (!bearerToken.isNullOrBlank()) {
+            connection.setRequestProperty("Authorization", "Bearer $bearerToken")
+        }
 
         connection.outputStream.use { output ->
             output.write(jsonBody.toByteArray(Charsets.UTF_8))
