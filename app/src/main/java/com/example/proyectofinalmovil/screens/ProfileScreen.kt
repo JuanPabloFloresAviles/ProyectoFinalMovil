@@ -1,6 +1,7 @@
 package com.example.proyectofinalmovil.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.ButtonDefaults
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
@@ -44,15 +47,19 @@ private val AzulAccion = Color(0xFF1067A6)
 private val AzulOscuro = Color(0xFF0A4E7A)
 private val GrisTexto = Color(0xFF333333)
 private val BordeCard = Color(0xFFD6D1C2)
+private val RojoCerrarSesion = Color(0xFFB42318)
 
 @Composable
 fun ProfileScreen(
     onVerHistorial: () -> Unit,
     onVerResenas: () -> Unit,
     onRecuperarCompra: () -> Unit,
+    onCerrarSesion: () -> Unit,
+    onIniciarSesion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
+    val isSignedIn = appState.authToken.isNotBlank()
     var editing by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(appState.userProfile.name) }
     var email by remember { mutableStateOf(appState.userProfile.email) }
@@ -64,6 +71,16 @@ fun ProfileScreen(
             .fillMaxSize()
             .background(FondoCrema),
     ) {
+        if (!isSignedIn) {
+            SignedOutProfileState(
+                onIniciarSesion = onIniciarSesion,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+            )
+            return@Column
+        }
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -174,7 +191,64 @@ fun ProfileScreen(
                 text = "Recuperar compra invitada",
                 onClick = onRecuperarCompra,
             )
+            Spacer(modifier = Modifier.height(10.dp))
+            DangerOutlineButton(
+                text = "Cerrar sesión",
+                onClick = onCerrarSesion,
+            )
         }
+    }
+}
+
+@Composable
+private fun SignedOutProfileState(
+    onIniciarSesion: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Aún no has iniciado sesión",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = GrisTexto,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            UiPrimaryButton(
+                text = "Iniciar Sesión",
+                onClick = onIniciarSesion,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DangerOutlineButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = RojoCerrarSesion,
+        ),
+        border = BorderStroke(1.dp, RojoCerrarSesion),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = RojoCerrarSesion,
+        )
     }
 }
 
@@ -312,6 +386,8 @@ private fun ProfileScreenPreview() {
             onVerHistorial = {},
             onVerResenas = {},
             onRecuperarCompra = {},
+            onCerrarSesion = {},
+            onIniciarSesion = {},
         )
     }
 }

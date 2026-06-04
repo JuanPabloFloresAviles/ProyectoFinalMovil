@@ -16,6 +16,7 @@ data class MockMovie(
     val isNew: Boolean = false,
     val synopsis: String = "",
     val cast: List<String> = emptyList(),
+    val posterUrl: String? = null,
 )
 
 data class MockClient(
@@ -178,6 +179,8 @@ data class MockPurchase(
     val status: String,
     val ticketTotal: Int,
     val concessionsTotal: Int,
+    val qrCode: String = "",
+    val qrExpiresAtMillis: Long? = null,
 ) {
     val total: Int
         get() = ticketTotal + concessionsTotal

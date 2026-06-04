@@ -7,6 +7,9 @@ import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.state.AdminConcessionCombo
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 data class CatalogSnapshot(
     val movies: List<MockMovie>,
@@ -20,10 +23,15 @@ data class AdminRoomOption(
     val id: String,
     val name: String,
     val capacity: Int,
+    val rows: Int,
+    val columns: Int,
+    val activeSeats: Int,
+    val inactiveSeatLabels: List<String>,
 )
 
 class CatalogApi(
     private val client: CineUabcsApiClient = CineUabcsApiClient(),
+    private val config: CineUabcsApiConfig = CineUabcsApiConfig(),
 ) {
     fun getCatalog(): CatalogSnapshot {
         return parseCatalog(JSONObject(client.get("mobile/catalog")))
@@ -36,6 +44,8 @@ class CatalogApi(
         synopsis: String,
         classification: String,
         durationMinutes: Int,
+        posterUrl: String? = null,
+        tmdbId: Int? = null,
     ): CatalogSnapshot {
         val body = JSONObject()
             .putNullable("id", id)
@@ -43,6 +53,8 @@ class CatalogApi(
             .put("sinopsis", synopsis)
             .put("clasificacion", classification)
             .put("duracionMin", durationMinutes)
+            .putNullable("posterUrl", posterUrl)
+            .putNullable("tmdbId", tmdbId)
         return parseCatalog(JSONObject(client.postJson("mobile/admin/peliculas", body.toString(), token)))
     }
 
@@ -68,6 +80,7 @@ class CatalogApi(
         id: String?,
         name: String,
         category: String,
+        cost: Int,
         price: Int,
         stock: Int,
     ): CatalogSnapshot {
@@ -76,6 +89,7 @@ class CatalogApi(
             .putNullable("id", id)
             .put("nombre", name)
             .put("categoria", category)
+            .put("costo", cost)
             .put("precio", price)
             .put("stock", stock)
         return parseCatalog(JSONObject(client.postJson("mobile/admin/dulceria", body.toString(), token)))
@@ -95,6 +109,23 @@ class CatalogApi(
             .put("precio", price)
             .put("productoIds", JSONArray(productIds))
         return parseCatalog(JSONObject(client.postJson("mobile/admin/dulceria", body.toString(), token)))
+    }
+
+    fun saveRoom(
+        token: String,
+        id: String?,
+        name: String,
+        rows: Int,
+        columns: Int,
+        inactiveSeatLabels: List<String>,
+    ): CatalogSnapshot {
+        val body = JSONObject()
+            .putNullable("id", id)
+            .put("nombre", name)
+            .put("filas", rows)
+            .put("columnas", columns)
+            .put("butacasInactivas", JSONArray(inactiveSeatLabels))
+        return parseCatalog(JSONObject(client.postJson("mobile/admin/salas", body.toString(), token)))
     }
 
     private fun parseCatalog(json: JSONObject): CatalogSnapshot {
@@ -120,6 +151,7 @@ class CatalogApi(
                     isFeatured = movieJson.optBoolean("destacada", index == 0),
                     isNew = movieJson.optBoolean("estreno", true),
                     synopsis = movieJson.optString("sinopsis", ""),
+                    posterUrl = normalizedPosterUrl(movieJson.optString("posterUrl", "")),
                 ),
             )
             showtimesByMovieId[movieId] = parseShowtimes(functionsJson)
@@ -140,11 +172,10 @@ class CatalogApi(
                 val item = json.getJSONObject(index)
                 add(
                     MockShowtime(
-                        time = item.optString("fechaHora").takeIf { it.isNotBlank() }?.substring(11, 16)
-                            ?: "18:00",
+                        time = laPazTime(item.optString("fechaHora")),
                         room = item.optString("sala", "Sala"),
                         roomType = item.optString("tipoSala", "Tradicional"),
-                        format = item.optString("formato", "2D · Dob."),
+                        format = normalizedLanguage(item.optString("formato", "Doblada")),
                         price = item.optInt("precioBase", 0),
                         availableSeats = item.optInt("butacasDisponibles", 0),
                         id = item.optString("id"),
@@ -166,7 +197,7 @@ class CatalogApi(
                         id = item.getString("id"),
                         name = item.getString("nombre"),
                         description = item.optString("descripcion", item.optString("categoria", "Dulcería")),
-                        cost = 0,
+                        cost = item.optInt("costo", 0),
                         price = item.optInt("precio", 0),
                         stock = item.optInt("stock", 0),
                     ),
@@ -202,13 +233,55 @@ class CatalogApi(
                         id = item.getString("id"),
                         name = item.getString("nombre"),
                         capacity = item.optInt("capacidad", 0),
+                        rows = item.optInt("filas", 0),
+                        columns = item.optInt("columnas", 0),
+                        activeSeats = item.optInt("butacasActivas", item.optInt("capacidad", 0)),
+                        inactiveSeatLabels = parseStringList(item.optJSONArray("butacasInactivas") ?: JSONArray()),
                     ),
                 )
             }
         }
     }
+
+    private fun parseStringList(json: JSONArray): List<String> {
+        return List(json.length()) { index -> json.getString(index) }
+    }
+
+    private fun normalizedPosterUrl(value: String?): String? {
+        val poster = value?.takeIf { it.isNotBlank() && it != "null" } ?: return null
+        return if (poster.startsWith("http://") || poster.startsWith("https://")) {
+            poster
+        } else {
+            "${config.baseUrl.trimEnd('/')}${if (poster.startsWith("/")) poster else "/$poster"}"
+        }
+    }
+}
+
+private val laPazZone: ZoneId = ZoneId.of("America/Mazatlan")
+private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+private fun laPazTime(value: String?): String {
+    if (value.isNullOrBlank()) return "18:00"
+    return runCatching {
+        Instant.parse(value).atZone(laPazZone).format(timeFormatter)
+    }.getOrElse {
+        value.takeIf { it.length >= 16 }?.substring(11, 16) ?: "18:00"
+    }
+}
+
+private fun normalizedLanguage(value: String): String {
+    val upper = value.uppercase()
+    return when {
+        "SUB" in upper -> "Subtitulada"
+        "DOB" in upper -> "Doblada"
+        else -> value.ifBlank { "Doblada" }
+    }
 }
 
 private fun JSONObject.putNullable(name: String, value: String?): JSONObject {
     return if (value.isNullOrBlank()) put(name, JSONObject.NULL) else put(name, value)
+}
+
+private fun JSONObject.putNullable(name: String, value: Int?): JSONObject {
+    return if (value == null) put(name, JSONObject.NULL) else put(name, value)
 }

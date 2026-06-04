@@ -1,6 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -23,7 +32,12 @@ android {
             .orElse(providers.environmentVariable("CINE_UABCS_API_BASE_URL"))
             .orElse("https://cine-uabcs.vercel.app")
             .get()
+        val tmdbApiKey = providers.gradleProperty("TMDB_API_KEY")
+            .orElse(providers.environmentVariable("TMDB_API_KEY"))
+            .orElse(localProperties.getProperty("TMDB_API_KEY", ""))
+            .get()
         buildConfigField("String", "CINE_UABCS_API_BASE_URL", "\"$apiBaseUrl\"")
+        buildConfigField("String", "TMDB_API_KEY", "\"$tmdbApiKey\"")
     }
 
     buildTypes {
@@ -60,6 +74,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.coil.compose)
+    implementation(libs.zxing.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

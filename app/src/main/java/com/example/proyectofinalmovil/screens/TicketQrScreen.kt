@@ -2,6 +2,7 @@ package com.example.proyectofinalmovil.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,7 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,7 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiGhostButton
+import com.example.proyectofinalmovil.services.mock.MockPurchase
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
+import com.example.proyectofinalmovil.services.tickets.QrCodeBitmap
+import com.example.proyectofinalmovil.services.tickets.TicketQrPayload
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 // Colores de la pantalla (misma paleta del diseño)
@@ -47,8 +51,8 @@ private val GrisTexto = Color(0xFF333333)
 private val BordeCard = Color(0xFFD6D1C2)
 
 /**
- * Pantalla del boleto digital con código QR simulado.
- * Muestra los datos del boleto y un QR visual generado con composables.
+ * Pantalla del boleto digital con código QR real.
+ * Muestra los datos del boleto y codifica el mismo payload QR de web cuando está disponible.
  */
 @Composable
 fun TicketQrScreen(
@@ -58,11 +62,10 @@ fun TicketQrScreen(
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
-    val compra = appState.activePurchase()
-    val pelicula = appState.movieForPurchase(compra)
+    val compra = appState.activeQrPurchase()
 
-    // Patrón QR simulado (cuadrícula de 11x11)
-    val patronQr = remember { generarPatronQr() }
+    val qrPayload = compra?.let { TicketQrPayload.fromPurchase(it) }.orEmpty()
+    val qrBitmap = remember(qrPayload) { QrCodeBitmap.create(qrPayload, 512) }
 
     Column(
         modifier = modifier
@@ -78,152 +81,46 @@ fun TicketQrScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Encabezado
-            Text(
-                text = "TU BOLETO",
-                style = MaterialTheme.typography.labelSmall,
-                color = AzulAccion,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Tarjeta del boleto tipo ticket
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = Color.White,
-                shadowElevation = 4.dp,
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+            if (compra == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 180.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    // Nombre de la película
                     Text(
-                        text = pelicula.title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        text = "No hay boletos para hoy",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = GrisTexto,
                         textAlign = TextAlign.Center,
                     )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "${pelicula.genre} · ${pelicula.classification} · ${pelicula.duration}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GrisTexto.copy(alpha = 0.5f),
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Datos del boleto en 2 columnas
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        DatoBoleto(etiqueta = "Fecha", valor = compra.date)
-                        DatoBoleto(etiqueta = "Horario", valor = compra.time, alinearDerecha = true)
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        DatoBoleto(etiqueta = "Sala", valor = compra.room)
-                        DatoBoleto(etiqueta = "Asientos", valor = compra.seats.joinToString(", "), alinearDerecha = true)
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Línea punteada divisoria
-                    val bordeColor = BordeCard
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .drawBehind {
-                                drawLine(
-                                    color = bordeColor,
-                                    start = Offset(0f, 0f),
-                                    end = Offset(size.width, 0f),
-                                    strokeWidth = 2f,
-                                    pathEffect = PathEffect.dashPathEffect(
-                                        floatArrayOf(10f, 10f),
-                                        0f,
-                                    ),
-                                )
-                            },
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Código QR simulado
-                    Box(
-                        modifier = Modifier
-                            .size(180.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White)
-                            .border(
-                                width = 1.dp,
-                                color = BordeCard,
-                                shape = RoundedCornerShape(12.dp),
-                            )
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        // Cuadrícula QR simulada
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                        ) {
-                            patronQr.forEach { fila ->
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    fila.forEach { celdaActiva ->
-                                        Box(
-                                            modifier = Modifier
-                                                .size(12.dp)
-                                                .clip(RoundedCornerShape(1.dp))
-                                                .background(
-                                                    if (celdaActiva) GrisTexto else Color.White
-                                                ),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Folio
-                    Text(
-                        text = "Folio: ${compra.folio}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = AzulAccion,
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Presenta este código en la entrada",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GrisTexto.copy(alpha = 0.5f),
-                    )
                 }
-            }
+            } else {
+                val pelicula = appState.movieForPurchase(compra)
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Encabezado
+                Text(
+                    text = "TU BOLETO",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = AzulAccion,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TicketCard(
+                    compra = compra,
+                    peliculaTitulo = pelicula.title,
+                    peliculaDetalle = "${pelicula.genre} · ${pelicula.classification} · ${pelicula.duration}",
+                    qrBitmap = qrBitmap.asImageBitmap(),
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
 
         // Barra inferior fija
@@ -259,6 +156,130 @@ fun TicketQrScreen(
     }
 }
 
+@Composable
+private fun TicketCard(
+    compra: MockPurchase,
+    peliculaTitulo: String,
+    peliculaDetalle: String,
+    qrBitmap: ImageBitmap,
+) {
+    // Tarjeta del boleto tipo ticket
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        shadowElevation = 4.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Nombre de la película
+            Text(
+                text = peliculaTitulo,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = GrisTexto,
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = peliculaDetalle,
+                style = MaterialTheme.typography.bodySmall,
+                color = GrisTexto.copy(alpha = 0.5f),
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Datos del boleto en 2 columnas
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                DatoBoleto(etiqueta = "Fecha", valor = compra.date)
+                DatoBoleto(etiqueta = "Horario", valor = compra.time, alinearDerecha = true)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                DatoBoleto(etiqueta = "Sala", valor = compra.room)
+                DatoBoleto(etiqueta = "Asientos", valor = compra.seats.joinToString(", "), alinearDerecha = true)
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Línea punteada divisoria
+            val bordeColor = BordeCard
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .drawBehind {
+                        drawLine(
+                            color = bordeColor,
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, 0f),
+                            strokeWidth = 2f,
+                            pathEffect = PathEffect.dashPathEffect(
+                                floatArrayOf(10f, 10f),
+                                0f,
+                            ),
+                        )
+                    },
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Código QR real
+            Box(
+                modifier = Modifier
+                    .size(180.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .border(
+                        width = 1.dp,
+                        color = BordeCard,
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    bitmap = qrBitmap,
+                    contentDescription = "Código QR del boleto",
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Folio
+            Text(
+                text = "Folio: ${compra.folio}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = AzulAccion,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Presenta este código en la entrada",
+                style = MaterialTheme.typography.bodySmall,
+                color = GrisTexto.copy(alpha = 0.5f),
+            )
+        }
+    }
+}
+
 /**
  * Dato individual del boleto con etiqueta y valor.
  */
@@ -286,45 +307,6 @@ private fun DatoBoleto(
             color = GrisTexto,
         )
     }
-}
-
-/**
- * Genera un patrón de QR simulado de 11x11 de forma determinista.
- * No es un QR real, solo una representación visual decorativa.
- */
-private fun generarPatronQr(): List<List<Boolean>> {
-    // Patrón determinista que simula un QR visual
-    val semilla = 42
-    val tamano = 11
-    val patron = MutableList(tamano) { MutableList(tamano) { false } }
-
-    // Cuadros de posición en esquinas (patrón típico de QR)
-    // Esquina superior izquierda
-    for (i in 0..2) for (j in 0..2) patron[i][j] = true
-    patron[1][1] = false
-
-    // Esquina superior derecha
-    for (i in 0..2) for (j in (tamano - 3) until tamano) patron[i][j] = true
-    patron[1][tamano - 2] = false
-
-    // Esquina inferior izquierda
-    for (i in (tamano - 3) until tamano) for (j in 0..2) patron[i][j] = true
-    patron[tamano - 2][1] = false
-
-    // Patrón interior (determinista con operaciones simples)
-    for (i in 3 until tamano - 3) {
-        for (j in 3 until tamano - 3) {
-            patron[i][j] = ((i * semilla + j * 7) % 3 == 0)
-        }
-    }
-
-    // Líneas de sincronización
-    for (i in 3 until tamano - 3) {
-        patron[i][0] = i % 2 == 0
-        patron[0][i] = i % 2 == 0
-    }
-
-    return patron
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFFF9F6EB)
