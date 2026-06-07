@@ -34,9 +34,20 @@ class CineUabcsApiClient(
         }
     }
 
-    fun postJson(path: String, jsonBody: String, bearerToken: String? = null): String {
+    fun postJson(path: String, jsonBody: String, bearerToken: String? = null): String =
+        sendWithBody("POST", path, jsonBody, bearerToken)
+
+    fun deleteJson(path: String, jsonBody: String, bearerToken: String? = null): String =
+        sendWithBody("DELETE", path, jsonBody, bearerToken)
+
+    private fun sendWithBody(
+        method: String,
+        path: String,
+        jsonBody: String,
+        bearerToken: String? = null,
+    ): String {
         val connection = URL(config.endpoint(path)).openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
+        connection.requestMethod = method
         connection.connectTimeout = 10_000
         connection.readTimeout = 10_000
         connection.doOutput = true

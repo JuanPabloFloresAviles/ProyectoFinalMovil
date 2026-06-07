@@ -28,19 +28,16 @@ fun UiPrimaryButton(
     enabled: Boolean = true,
 ) {
     val shape = MaterialTheme.shapes.medium
-    val shadowColor = if (enabled) {
-        PrimaryButtonShadow
-    } else {
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    }
 
     Box(modifier = if (fillWidth) modifier.fillMaxWidth() else modifier) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .offset(y = 6.dp)
-                .background(shadowColor, shape),
-        )
+        if (enabled) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .offset(y = 6.dp)
+                    .background(PrimaryButtonShadow, shape),
+            )
+        }
         Button(
             onClick = onClick,
             enabled = enabled,

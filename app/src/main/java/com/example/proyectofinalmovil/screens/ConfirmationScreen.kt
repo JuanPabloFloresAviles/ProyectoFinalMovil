@@ -61,6 +61,7 @@ fun ConfirmationScreen(
         ?: appState.showtimesFor(compra.movieId).first()
     val asientos = compra.seats
     val folio = compra.folio
+    val snackSummary = compra.concessionItems.joinToString(" · ") { "${it.quantity} ${it.name}" }
 
     Column(
         modifier = modifier
@@ -176,10 +177,60 @@ fun ConfirmationScreen(
 
                     // Folio
                     FilaDato(etiqueta = "Folio", valor = folio)
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    FilaDato(etiqueta = "Pago", valor = compra.paymentMethodLabel)
+                    if (compra.guestPurchase) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        FilaDato(etiqueta = "Recuperación", valor = compra.email)
+                    }
+                    if (snackSummary.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        FilaDato(etiqueta = "Dulcería", valor = snackSummary)
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            if (compra.ticketPackages.isNotEmpty() || compra.concessionPackages.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BordeCard),
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "Paquetes generados",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = GrisTexto,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        compra.ticketPackages.forEach { paquete ->
+                            Text(
+                                text = "${paquete.label}: ${paquete.seats.joinToString(", ")}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = GrisTexto.copy(alpha = 0.75f),
+                            )
+                        }
+                        compra.concessionPackages.forEach { paquete ->
+                            val detalle = paquete.items.joinToString(", ") { "${it.quantity} ${it.name}" }
+                            Text(
+                                text = "${paquete.label}: $detalle",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = GrisTexto.copy(alpha = 0.75f),
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
 
         // Barra inferior fija

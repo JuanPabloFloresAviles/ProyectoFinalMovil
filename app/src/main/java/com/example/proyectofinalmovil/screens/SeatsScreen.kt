@@ -56,6 +56,7 @@ fun SeatsScreen(
     val pelicula = appState.movies.find { it.id == movieId } ?: appState.movies.first()
     val funcion = appState.currentShowtime()
     val seleccionados = appState.selectedSeatIds
+    val ocupados = appState.occupiedSeatsForCurrentShowtime()
     val subtotal = appState.ticketTotal()
 
     Column(
@@ -139,18 +140,29 @@ fun SeatsScreen(
                         for (indiceColumna in 0 until 8) {
                             val nombreAsiento = "${etiquetasFilas[indiceFila]}${indiceColumna + 1}"
                             val estaSeleccionado = nombreAsiento in seleccionados
+                            val estaOcupado = nombreAsiento in ocupados
 
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(if (estaSeleccionado) AzulAccion else Blanco)
+                                    .background(
+                                        when {
+                                            estaSeleccionado -> AzulAccion
+                                            estaOcupado -> GrisOcupado
+                                            else -> Blanco
+                                        },
+                                    )
                                     .border(
                                         width = 1.dp,
-                                        color = if (estaSeleccionado) AzulAccion else BordeAsiento,
+                                        color = when {
+                                            estaSeleccionado -> AzulAccion
+                                            estaOcupado -> GrisOcupado
+                                            else -> BordeAsiento
+                                        },
                                         shape = RoundedCornerShape(6.dp),
                                     )
-                                    .clickable { appState.toggleSeat(nombreAsiento) },
+                                    .clickable(enabled = !estaOcupado) { appState.toggleSeat(nombreAsiento) },
                             )
                         }
 

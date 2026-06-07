@@ -2,6 +2,7 @@ package com.example.proyectofinalmovil.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +21,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,8 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiGhostButton
+import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockPurchase
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.services.tickets.QrCodeBitmap
@@ -60,6 +64,9 @@ fun TicketQrScreen(
     onRecuperarCompra: () -> Unit,
     onVolverACartelera: () -> Unit,
     modifier: Modifier = Modifier,
+    onSepararBoletos: (folio: String, seats: List<String>) -> Unit = { _, _ -> },
+    isSeparating: Boolean = false,
+    separarError: String? = null,
 ) {
     val appState = LocalAppUiState.current
     val compra = appState.activeQrPurchase()
@@ -119,6 +126,54 @@ fun TicketQrScreen(
                     qrBitmap = qrBitmap.asImageBitmap(),
                 )
 
+                if (compra.ticketPackages.isNotEmpty() || compra.concessionPackages.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BordeCard),
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Paquetes de acceso y recolección",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = GrisTexto,
+                            )
+                            compra.ticketPackages.forEach { paquete ->
+                                Spacer(modifier = Modifier.height(12.dp))
+                                PaqueteQrItem(
+                                    titulo = paquete.label,
+                                    detalle = "Butacas: ${paquete.seats.joinToString(", ")}",
+                                    qrContent = paquete.qrCode,
+                                )
+                            }
+                            compra.concessionPackages.forEach { paquete ->
+                                Spacer(modifier = Modifier.height(12.dp))
+                                PaqueteQrItem(
+                                    titulo = paquete.label,
+                                    detalle = paquete.items.joinToString(", ") { "${it.quantity} ${it.name}" },
+                                    qrContent = paquete.qrCode,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                val separables = appState.separableSeats(compra.folio)
+                if (compra.seats.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SepararBoletosCard(
+                        separableSeats = separables,
+                        isSeparating = isSeparating,
+                        separarError = separarError,
+                        onSeparar = { seleccion -> onSepararBoletos(compra.folio, seleccion) },
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
@@ -134,22 +189,8 @@ fun TicketQrScreen(
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
                 UiPrimaryButton(
-                    text = "Ir al historial",
-                    onClick = onIrAlHistorial,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                UiGhostButton(
                     text = "Recuperar compra",
                     onClick = onRecuperarCompra,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                UiGhostButton(
-                    text = "Volver a cartelera",
-                    onClick = onVolverACartelera,
                 )
             }
         }
@@ -163,6 +204,8 @@ private fun TicketCard(
     peliculaDetalle: String,
     qrBitmap: ImageBitmap,
 ) {
+    val isMoviePurchase = compra.seats.isNotEmpty()
+    val snackSummary = compra.concessionItems.joinToString(", ") { "${it.quantity} ${it.name}" }
     // Tarjeta del boleto tipo ticket
     Surface(
         modifier = Modifier
@@ -176,9 +219,8 @@ private fun TicketCard(
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Nombre de la película
             Text(
-                text = peliculaTitulo,
+                text = if (isMoviePurchase) peliculaTitulo else "Recolectar dulcería",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = GrisTexto,
@@ -188,30 +230,51 @@ private fun TicketCard(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = peliculaDetalle,
+                text = if (isMoviePurchase) peliculaDetalle else "Presenta este QR en la barra de dulcería",
                 style = MaterialTheme.typography.bodySmall,
                 color = GrisTexto.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Datos del boleto en 2 columnas
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                DatoBoleto(etiqueta = "Fecha", valor = compra.date)
-                DatoBoleto(etiqueta = "Horario", valor = compra.time, alinearDerecha = true)
-            }
+            if (isMoviePurchase) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    DatoBoleto(etiqueta = "Fecha", valor = compra.date)
+                    DatoBoleto(etiqueta = "Horario", valor = compra.time, alinearDerecha = true)
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                DatoBoleto(etiqueta = "Sala", valor = compra.room)
-                DatoBoleto(etiqueta = "Asientos", valor = compra.seats.joinToString(", "), alinearDerecha = true)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    DatoBoleto(etiqueta = "Sala", valor = compra.room)
+                    DatoBoleto(
+                        etiqueta = "Asientos",
+                        valor = compra.seats.joinToString(", "),
+                        alinearDerecha = true,
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    DatoBoleto(etiqueta = "Fecha", valor = compra.date)
+                    DatoBoleto(etiqueta = "Tipo", valor = "Dulcería", alinearDerecha = true)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                DatoBoleto(
+                    etiqueta = "Productos",
+                    valor = snackSummary.ifBlank { "Pedido en preparación" },
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -272,10 +335,200 @@ private fun TicketCard(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Presenta este código en la entrada",
+                text = compra.paymentMethodLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = GrisTexto.copy(alpha = 0.65f),
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = if (isMoviePurchase) {
+                    "Presenta este código en la entrada"
+                } else {
+                    "Presenta este código al recoger tu pedido"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = GrisTexto.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+/**
+ * Muestra un paquete separado con su código QR escaneable.
+ */
+@Composable
+private fun PaqueteQrItem(
+    titulo: String,
+    detalle: String,
+    qrContent: String,
+) {
+    val qrBitmap = remember(qrContent) { QrCodeBitmap.create(qrContent.ifBlank { "CINE-UABCS" }, 400) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = FondoCrema,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BordeCard),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = titulo,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = GrisTexto,
+            )
+            if (detalle.isNotBlank()) {
+                Text(
+                    text = detalle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GrisTexto.copy(alpha = 0.65f),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .size(150.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White)
+                    .border(1.dp, BordeCard, RoundedCornerShape(10.dp))
+                    .padding(10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    bitmap = qrBitmap.asImageBitmap(),
+                    contentDescription = "Código QR de $titulo",
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            if (qrContent.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = qrContent,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = GrisTexto.copy(alpha = 0.5f),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta para separar boletos de una compra en un QR aparte,
+ * para las personas que llegarán por su cuenta.
+ */
+@Composable
+private fun SepararBoletosCard(
+    separableSeats: List<String>,
+    isSeparating: Boolean,
+    separarError: String?,
+    onSeparar: (List<String>) -> Unit,
+) {
+    var seleccion by remember { mutableStateOf(emptySet<String>()) }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BordeCard),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Separar boletos",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = GrisTexto,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Genera un QR aparte para las personas que llegarán por su cuenta.",
+                style = MaterialTheme.typography.bodySmall,
+                color = GrisTexto.copy(alpha = 0.6f),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (separableSeats.isEmpty()) {
+                Text(
+                    text = "Todos los boletos de esta compra ya fueron separados.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GrisTexto.copy(alpha = 0.7f),
+                )
+            } else {
+                separableSeats.forEach { seat ->
+                    val checked = seat in seleccion
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(
+                                width = 1.dp,
+                                color = if (checked) AzulAccion else BordeCard,
+                                shape = RoundedCornerShape(10.dp),
+                            )
+                            .background(if (checked) AzulAccion.copy(alpha = 0.08f) else Color.White)
+                            .clickable(enabled = !isSeparating) {
+                                seleccion = if (checked) seleccion - seat else seleccion + seat
+                            }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (checked) AzulAccion else Color.White)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (checked) AzulAccion else BordeCard,
+                                    shape = RoundedCornerShape(6.dp),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (checked) {
+                                Text(
+                                    text = "✓",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.size(12.dp))
+                        Text(
+                            text = "Butaca $seat",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = GrisTexto,
+                        )
+                    }
+                }
+
+                if (separarError != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = separarError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFC0392B),
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                UiPrimaryButton(
+                    text = if (isSeparating) "Generando QR..." else "Generar QR separado",
+                    onClick = { onSeparar(seleccion.toList()) },
+                    enabled = seleccion.isNotEmpty() && !isSeparating,
+                )
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.example.proyectofinalmovil.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,15 +39,29 @@ private val VerdeSuave = Color(0xFFE7F5E8)
 fun HistoryScreen(
     onVerBoleto: (String) -> Unit,
     onRecuperarCompra: () -> Unit,
+    onIniciarSesion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
+    val isSignedIn = appState.authToken.isNotBlank()
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(FondoCrema),
     ) {
+        if (!isSignedIn) {
+            SignedOutSectionState(
+                title = "Aún no has iniciado sesión",
+                actionText = "Iniciar Sesión",
+                onAction = onIniciarSesion,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+            )
+            return@Column
+        }
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -84,22 +99,6 @@ fun HistoryScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
-
-        Surface(
-            shadowElevation = 8.dp,
-            color = FondoCrema,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                UiPrimaryButton(
-                    text = "Recuperar compra",
-                    onClick = onRecuperarCompra,
-                )
-            }
-        }
     }
 }
 
@@ -110,6 +109,14 @@ private fun PurchaseCard(
     onVerBoleto: () -> Unit,
 ) {
     val statusColor = if (purchase.status == "Activa") AzulAccion else GrisTexto.copy(alpha = 0.55f)
+    val isMoviePurchase = purchase.seats.isNotEmpty()
+    val headerTitle = if (isMoviePurchase) movieTitle else "Compra de dulcería"
+    val headerMeta = if (isMoviePurchase) {
+        "${purchase.date} · ${purchase.time} · ${purchase.room}"
+    } else {
+        "${purchase.date} · Dulcería"
+    }
+    val snackSummary = purchase.concessionItems.joinToString(", ") { "${it.quantity} ${it.name}" }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -126,14 +133,14 @@ private fun PurchaseCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = movieTitle,
+                        text = headerTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = GrisTexto,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${purchase.date} · ${purchase.time} · ${purchase.room}",
+                        text = headerMeta,
                         style = MaterialTheme.typography.bodySmall,
                         color = GrisTexto.copy(alpha = 0.62f),
                     )
@@ -154,7 +161,12 @@ private fun PurchaseCard(
 
             Spacer(modifier = Modifier.height(14.dp))
             DetailRow("Folio", purchase.folio)
-            DetailRow("Asientos", purchase.seats.joinToString(", "))
+            if (isMoviePurchase) {
+                DetailRow("Asientos", purchase.seats.joinToString(", "))
+            }
+            if (!isMoviePurchase && snackSummary.isNotBlank()) {
+                DetailRow("Productos", snackSummary)
+            }
             DetailRow("Total", "\$${purchase.total}")
             Spacer(modifier = Modifier.height(12.dp))
             UiGhostButton(
@@ -197,6 +209,38 @@ private fun HistoryScreenPreview() {
         HistoryScreen(
             onVerBoleto = {},
             onRecuperarCompra = {},
+            onIniciarSesion = {},
         )
+    }
+}
+
+@Composable
+private fun SignedOutSectionState(
+    title: String,
+    actionText: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = GrisTexto,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            UiPrimaryButton(
+                text = actionText,
+                onClick = onAction,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }

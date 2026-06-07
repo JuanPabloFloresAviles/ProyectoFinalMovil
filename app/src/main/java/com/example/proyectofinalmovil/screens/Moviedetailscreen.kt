@@ -60,6 +60,10 @@ fun MovieDetailScreen(
     val pelicula = appState.movies.find { it.id == movieId } ?: appState.movies.first()
     val sinopsis = appState.synopsisFor(movieId)
     val reparto = appState.castFor(movieId)
+    val funciones = appState.showtimesFor(movieId)
+    val precioDesde = funciones.minOfOrNull { it.price } ?: 0
+    val funcionesSubtituladas = funciones.any { it.format.contains("Subt", ignoreCase = true) }
+    val resenasTexto = if (appState.signedInEmail.isNotBlank()) "Ver reseñas" else "Opiniones disponibles"
 
     var sinopsisExpandida by remember { mutableStateOf(false) }
 
@@ -85,7 +89,7 @@ fun MovieDetailScreen(
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                text = "$45",
+                                text = "$$precioDesde",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onBackground,
@@ -118,7 +122,10 @@ fun MovieDetailScreen(
                 .padding(innerPadding),
         ) {
 
-            PosterHeader(pelicula = pelicula)
+            PosterHeader(
+                pelicula = pelicula,
+                hasSubtitledShowtimes = funcionesSubtituladas,
+            )
 
             Row(
                 modifier = Modifier
@@ -202,7 +209,7 @@ fun MovieDetailScreen(
                 Column(horizontalAlignment = Alignment.End) {
                     TextButton(onClick = { onVerResenas(movieId) }) {
                         Text(
-                            text = "284 reseñas",
+                            text = resenasTexto,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -327,6 +334,7 @@ fun MovieDetailScreen(
 @Composable
 private fun PosterHeader(
     pelicula: MockMovie,
+    hasSubtitledShowtimes: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -359,7 +367,14 @@ private fun PosterHeader(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             Text(
-                text = "${pelicula.genre.uppercase()} · ${pelicula.classification} · SUBTITULADOS",
+                text = buildString {
+                    append(pelicula.genre.uppercase())
+                    append(" · ")
+                    append(pelicula.classification)
+                    if (hasSubtitledShowtimes) {
+                        append(" · SUBTITULADA DISPONIBLE")
+                    }
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.7f),
             )

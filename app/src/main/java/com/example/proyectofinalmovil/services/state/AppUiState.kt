@@ -15,7 +15,9 @@ import com.example.proyectofinalmovil.services.mock.MockChatMessage
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
 import com.example.proyectofinalmovil.services.mock.MockMovie
 import com.example.proyectofinalmovil.services.mock.MockMovieRecommendation
+import com.example.proyectofinalmovil.services.mock.MockPaymentMethod
 import com.example.proyectofinalmovil.services.mock.MockPurchase
+import com.example.proyectofinalmovil.services.mock.MockPurchaseConcessionItem
 import com.example.proyectofinalmovil.services.mock.MockReview
 import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.mock.MockSocialUser
@@ -24,6 +26,12 @@ import com.example.proyectofinalmovil.services.tickets.TicketQrVisibility
 import com.example.proyectofinalmovil.services.mock.generosFiltro
 import com.example.proyectofinalmovil.services.mock.mockSynopsis
 import com.example.proyectofinalmovil.services.mock.mockCast
+import com.example.proyectofinalmovil.services.mock.mockPaymentMethods
+import com.example.proyectofinalmovil.services.mock.MockConcessionPackage
+import com.example.proyectofinalmovil.services.mock.MockTicketPackage
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private const val DEFAULT_PURCHASE_EMAIL = "invitado@cineuabcs.mx"
 
@@ -41,6 +49,7 @@ class AppUiState {
     val showtimesByMovieId = mutableStateMapOf<String, List<MockShowtime>>()
     val concessions = mutableStateListOf<MockConcessionItem>()
     val concessionCombos = mutableStateListOf<AdminConcessionCombo>()
+    val paymentMethods = mutableStateListOf<MockPaymentMethod>()
     val adminRooms = mutableStateListOf<AdminRoomOption>()
     var userProfile by mutableStateOf(emptyUserProfile())
         private set
@@ -60,6 +69,8 @@ class AppUiState {
     var selectedShowtimeId by mutableStateOf("")
     var selectedChatFriendId by mutableStateOf("")
     var selectedRecommendationFriendId by mutableStateOf("")
+    var selectedAdminShowtimeMovieId by mutableStateOf("")
+    var selectedAdminShowtimeId by mutableStateOf("")
     var activePurchaseFolio by mutableStateOf("")
     var signedInEmail by mutableStateOf("")
         private set
@@ -73,12 +84,18 @@ class AppUiState {
 
     val selectedSeatIds = mutableStateListOf<String>()
     val concessionQuantities = mutableStateMapOf<String, Int>()
+    val comboQuantities = mutableStateMapOf<String, Int>()
+    var selectedPaymentMethodId by mutableStateOf("")
+    var guestCheckoutEmail by mutableStateOf(DEFAULT_PURCHASE_EMAIL)
 
     fun signIn(session: AuthSession) {
         signedInEmail = session.email
         signedInName = session.name
         authToken = session.token
         userRole = userRoleFromApi(session.role)
+        if (guestCheckoutEmail == DEFAULT_PURCHASE_EMAIL) {
+            guestCheckoutEmail = session.email
+        }
     }
 
     fun signOut() {
@@ -97,9 +114,14 @@ class AppUiState {
         outgoingRequestIds.clear()
         selectedChatFriendId = ""
         selectedRecommendationFriendId = ""
+        selectedAdminShowtimeMovieId = ""
+        selectedAdminShowtimeId = ""
         activePurchaseFolio = ""
         selectedSeatIds.clear()
         concessionQuantities.clear()
+        comboQuantities.clear()
+        selectedPaymentMethodId = ""
+        guestCheckoutEmail = DEFAULT_PURCHASE_EMAIL
         adminMetrics = null
     }
 
@@ -129,9 +151,17 @@ class AppUiState {
         concessions.addAll(snapshot.concessions)
         concessionCombos.clear()
         concessionCombos.addAll(snapshot.combos)
+        if (paymentMethods.isEmpty()) {
+            paymentMethods.clear()
+            paymentMethods.addAll(mockPaymentMethods)
+            selectedPaymentMethodId = paymentMethods.firstOrNull { it.isDefault }?.id
+                ?: paymentMethods.firstOrNull()?.id
+                ?: ""
+        }
         adminRooms.clear()
         adminRooms.addAll(snapshot.rooms)
         concessionQuantities.clear()
+        comboQuantities.clear()
     }
 
     fun replaceUserState(snapshot: MobileUserSnapshot) {
@@ -251,6 +281,7 @@ class AppUiState {
     }
 
     fun toggleSeat(seatId: String) {
+        if (seatId in occupiedSeatsForCurrentShowtime()) return
         if (seatId in selectedSeatIds) {
             selectedSeatIds.remove(seatId)
         } else {
@@ -266,9 +297,97 @@ class AppUiState {
         }
     }
 
+    fun setComboQuantity(comboId: String, quantity: Int) {
+        if (quantity <= 0) {
+            comboQuantities.remove(comboId)
+        } else {
+            comboQuantities[comboId] = quantity
+        }
+    }
+
+    fun setSelectedPaymentMethod(methodId: String) {
+        selectedPaymentMethodId = methodId
+    }
+
+    fun setDefaultPaymentMethod(methodId: String) {
+        val updated = paymentMethods.map { it.copy(isDefault = it.id == methodId) }
+        paymentMethods.clear()
+        paymentMethods.addAll(updated)
+        selectedPaymentMethodId = methodId
+    }
+
+    fun removePaymentMethod(methodId: String) {
+        paymentMethods.removeAll { it.id == methodId }
+        if (selectedPaymentMethodId == methodId) {
+            selectedPaymentMethodId = paymentMethods.firstOrNull { it.isDefault }?.id
+                ?: paymentMethods.firstOrNull()?.id
+                ?: ""
+        }
+    }
+
+    fun addPaymentMethod(
+        last4: String,
+        holderName: String,
+        expiry: String,
+    ) {
+        val cleanLast4 = last4.takeLast(4)
+        val method = MockPaymentMethod(
+            id = "pm-${paymentMethods.size + 1}-${cleanLast4}",
+            last4 = cleanLast4,
+            holderName = holderName.trim().ifBlank { signedInName.ifBlank { "Titular" } },
+            expiry = expiry.trim(),
+            isDefault = paymentMethods.isEmpty(),
+        )
+        paymentMethods.add(0, method)
+        selectedPaymentMethodId = method.id
+    }
+
+    /** Reemplaza las tarjetas con las persistidas en el backend (TiDB). */
+    fun replacePaymentMethods(methods: List<MockPaymentMethod>) {
+        val previousSelected = selectedPaymentMethodId
+        paymentMethods.clear()
+        val normalized = methods.mapIndexed { index, method ->
+            method.copy(isDefault = index == 0)
+        }
+        paymentMethods.addAll(normalized)
+        selectedPaymentMethodId = when {
+            normalized.any { it.id == previousSelected } -> previousSelected
+            else -> normalized.firstOrNull()?.id ?: ""
+        }
+    }
+
+    fun updateGuestCheckoutEmail(email: String) {
+        guestCheckoutEmail = email
+    }
+
     fun currentMovie(): MockMovie = movieById(selectedMovieId)
 
     fun currentShowtime(): MockShowtime = showtimeForCurrentSelection()
+
+    fun currentShowtimeDateLabel(): String {
+        return showtimeDateLabel(currentShowtime().startsAt)
+    }
+
+    fun currentShowtimeNumericId(): Int? = currentShowtime().id?.toIntOrNull()
+
+    fun occupiedSeatsForCurrentShowtime(): Set<String> {
+        val currentShowtime = currentShowtime()
+        val fromShowtime = currentShowtime.takenSeats.toSet()
+        val movieId = selectedMovieId
+        val currentDate = currentShowtimeDateLabel()
+        val fromPurchases = if (movieId.isBlank()) emptySet() else purchases
+            .asSequence()
+            .filter { purchase ->
+                purchase.movieId == movieId &&
+                    purchase.room == currentShowtime.room &&
+                    purchase.time == currentShowtime.time &&
+                    purchase.date == currentDate &&
+                    purchase.status != "Cancelada"
+            }
+            .flatMap { it.seats.asSequence() }
+            .toSet()
+        return fromShowtime + fromPurchases
+    }
 
     fun selectedConcessionItems(): List<Pair<MockConcessionItem, Int>> {
         return concessions.mapNotNull { item ->
@@ -277,9 +396,18 @@ class AppUiState {
         }
     }
 
+    fun selectedComboItems(): List<Pair<AdminConcessionCombo, Int>> {
+        return concessionCombos.mapNotNull { combo ->
+            val quantity = comboQuantities[combo.id] ?: 0
+            if (quantity > 0) combo to quantity else null
+        }
+    }
+
     fun ticketTotal(): Int = selectedSeatIds.size * currentShowtime().price
 
-    fun concessionTotal(): Int = selectedConcessionItems().sumOf { (item, quantity) -> item.price * quantity }
+    fun concessionTotal(): Int =
+        selectedConcessionItems().sumOf { (item, quantity) -> item.price * quantity } +
+            selectedComboItems().sumOf { (combo, quantity) -> combo.price * quantity }
 
     fun totalToPay(): Int = ticketTotal() + concessionTotal()
 
@@ -287,11 +415,34 @@ class AppUiState {
 
     fun confirmCheckout(): MockPurchase {
         val folio = generatePurchaseFolio()
+        val ticketPackage = MockTicketPackage(
+            id = "ticket-$folio",
+            label = "Boletos de sala",
+            seats = checkoutSeatLabels(),
+            qrCode = "TICKETS-$folio",
+        )
+        val snacks = purchaseConcessionItems()
+        val snackPackages = if (snacks.isEmpty()) {
+            emptyList()
+        } else {
+            listOf(
+                MockConcessionPackage(
+                    id = "snacks-$folio",
+                    label = "Recolectar en dulcería",
+                    items = snacks,
+                    qrCode = "SNACKS-$folio",
+                ),
+            )
+        }
+        val paymentLabel = paymentMethods.firstOrNull { it.id == selectedPaymentMethodId }?.let {
+            "Tarjeta • ${it.last4}"
+        } ?: "Invitado · folio + correo"
+        val email = if (signedInEmail.isNotBlank()) signedInEmail else guestCheckoutEmail.ifBlank { DEFAULT_PURCHASE_EMAIL }
         val purchase = MockPurchase(
             folio = folio,
-            email = DEFAULT_PURCHASE_EMAIL,
+            email = email,
             movieId = selectedMovieId,
-            date = "Hoy",
+            date = currentShowtimeDateLabel(),
             time = currentShowtime().time,
             room = currentShowtime().room,
             seats = checkoutSeatLabels(),
@@ -299,15 +450,50 @@ class AppUiState {
             ticketTotal = ticketTotal(),
             concessionsTotal = concessionTotal(),
             qrCode = folio,
+            paymentMethodLabel = paymentLabel,
+            guestPurchase = signedInEmail.isBlank(),
+            concessionItems = snacks,
+            ticketPackages = listOf(ticketPackage),
+            concessionPackages = snackPackages,
         )
         purchases.add(0, purchase)
+        reserveSeatsForCurrentShowtime(purchase.seats.size)
         activePurchaseFolio = purchase.folio
+        clearCheckoutDraft()
         return purchase
     }
 
     fun activePurchase(): MockPurchase = purchases.firstOrNull { it.folio == activePurchaseFolio }
         ?: purchases.firstOrNull()
         ?: emptyPurchase()
+
+    fun registerCompletedPurchase(purchase: MockPurchase) {
+        purchases.removeAll { it.folio == purchase.folio }
+        purchases.add(0, purchase)
+        activePurchaseFolio = purchase.folio
+        reserveSeatsForCurrentShowtime(purchase.seats.size)
+        clearCheckoutDraft()
+    }
+
+    /** Butacas de una compra que todavía no se han separado en un QR aparte. */
+    fun separableSeats(folio: String): List<String> {
+        val purchase = purchases.firstOrNull { it.folio == folio } ?: return emptyList()
+        val yaSeparadas = purchase.ticketPackages.flatMap { it.seats }.toSet()
+        return purchase.seats.filter { it !in yaSeparadas }
+    }
+
+    /** Agrega un paquete de boletos separado a la compra correspondiente. */
+    fun applySeparatedTicketPackage(folio: String, ticketPackage: MockTicketPackage) {
+        val index = purchases.indexOfFirst { it.folio == folio }
+        if (index < 0) return
+        val current = purchases[index]
+        if (ticketPackage.id.isNotBlank() && current.ticketPackages.any { it.id == ticketPackage.id }) {
+            return
+        }
+        purchases[index] = current.copy(
+            ticketPackages = current.ticketPackages + ticketPackage,
+        )
+    }
 
     fun activeQrPurchase(nowMillis: Long = System.currentTimeMillis()): MockPurchase? {
         val selected = purchases.firstOrNull {
@@ -327,11 +513,38 @@ class AppUiState {
         return movieById(purchase.movieId)
     }
 
+    fun paymentMethodLabel(): String {
+        return paymentMethods.firstOrNull { it.id == selectedPaymentMethodId }?.let { "Tarjeta • ${it.last4}" }
+            ?: "Invitado · folio + correo"
+    }
+
+    fun comboProductNames(combo: AdminConcessionCombo): List<String> {
+        return combo.productIds.mapNotNull { productId ->
+            concessions.firstOrNull { it.id == productId }?.name
+        }
+    }
+
     fun showtimesFor(movieId: String): List<MockShowtime> {
         return showtimesByMovieId[movieId] ?: emptyList()
     }
 
-    fun synopsisFor(movieId: String): String = mockSynopsis[movieId] ?: "Sinopsis no disponible."
+    fun selectAdminShowtime(movieId: String, showtimeId: String) {
+        selectedAdminShowtimeMovieId = movieId
+        selectedAdminShowtimeId = showtimeId
+    }
+
+    fun selectedAdminShowtime(): MockShowtime? {
+        val movieId = selectedAdminShowtimeMovieId
+        val showtimeId = selectedAdminShowtimeId
+        if (movieId.isBlank() || showtimeId.isBlank()) return null
+        return showtimesFor(movieId).firstOrNull { showtimeId(movieId, it) == showtimeId }
+    }
+
+    fun synopsisFor(movieId: String): String {
+        val deCatalogo = movies.firstOrNull { it.id == movieId }?.synopsis
+        if (!deCatalogo.isNullOrBlank()) return deCatalogo
+        return mockSynopsis[movieId] ?: "Sinopsis no disponible."
+    }
 
     fun castFor(movieId: String): List<String> = mockCast[movieId] ?: emptyList()
 
@@ -392,6 +605,26 @@ class AppUiState {
     private fun clearCheckoutSeatsAndConcessions() {
         selectedSeatIds.clear()
         concessionQuantities.clear()
+        comboQuantities.clear()
+    }
+
+    private fun purchaseConcessionItems(): List<MockPurchaseConcessionItem> {
+        val products = selectedConcessionItems().map { (item, quantity) ->
+            MockPurchaseConcessionItem(
+                id = item.id,
+                name = item.name,
+                quantity = quantity,
+            )
+        }
+        val combos = selectedComboItems().map { (combo, quantity) ->
+            MockPurchaseConcessionItem(
+                id = combo.id,
+                name = combo.name,
+                quantity = quantity,
+                type = "combo",
+            )
+        }
+        return products + combos
     }
 
     private fun movieById(movieId: String): MockMovie {
@@ -424,7 +657,37 @@ class AppUiState {
     }
 
     private fun showtimeId(movieId: String, showtime: MockShowtime): String {
-        return showtime.id?.takeIf { it.isNotBlank() } ?: "$movieId|${showtime.time}"
+        return showtime.id?.takeIf { it.isNotBlank() }
+            ?: listOf(
+                movieId,
+                showtime.startsAt ?: "",
+                showtime.roomId ?: showtime.room,
+                showtime.time,
+            ).joinToString("|")
+    }
+
+    private fun reserveSeatsForCurrentShowtime(seatsPurchased: Int) {
+        if (seatsPurchased <= 0) return
+        val movieId = selectedMovieId
+        if (movieId.isBlank()) return
+        val updated = showtimesFor(movieId).map { showtime ->
+            if (showtimeId(movieId, showtime) != selectedShowtimeId) return@map showtime
+            showtime.copy(
+                availableSeats = (showtime.availableSeats - seatsPurchased).coerceAtLeast(0),
+            )
+        }
+        showtimesByMovieId[movieId] = updated
+    }
+
+    private fun showtimeDateLabel(startsAt: String?): String {
+        if (startsAt.isNullOrBlank()) return "Hoy"
+        return runCatching {
+            Instant.parse(startsAt)
+                .atZone(laPazZone)
+                .format(showtimeDateFormatter)
+        }.getOrElse {
+            startsAt.take(10)
+        }
     }
 
     private fun uniqueIdFrom(value: String, existingIds: List<String>): String {
@@ -467,6 +730,9 @@ class AppUiState {
         )
     }
 }
+
+private val laPazZone: ZoneId = ZoneId.of("America/Mazatlan")
+private val showtimeDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
 
 private fun emptyUserProfile(): MockUserProfile {
     return MockUserProfile(

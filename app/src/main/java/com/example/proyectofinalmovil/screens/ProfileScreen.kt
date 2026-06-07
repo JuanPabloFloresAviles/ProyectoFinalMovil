@@ -54,6 +54,7 @@ fun ProfileScreen(
     onVerHistorial: () -> Unit,
     onVerResenas: () -> Unit,
     onRecuperarCompra: () -> Unit,
+    onAdministrarPagos: () -> Unit,
     onCerrarSesion: () -> Unit,
     onIniciarSesion: () -> Unit,
     modifier: Modifier = Modifier,
@@ -185,6 +186,11 @@ fun ProfileScreen(
             UiGhostButton(
                 text = "Ver historial de compras",
                 onClick = onVerHistorial,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            UiGhostButton(
+                text = "Métodos de pago",
+                onClick = onAdministrarPagos,
             )
             Spacer(modifier = Modifier.height(10.dp))
             UiGhostButton(
@@ -386,6 +392,7 @@ private fun ProfileScreenPreview() {
             onVerHistorial = {},
             onVerResenas = {},
             onRecuperarCompra = {},
+            onAdministrarPagos = {},
             onCerrarSesion = {},
             onIniciarSesion = {},
         )

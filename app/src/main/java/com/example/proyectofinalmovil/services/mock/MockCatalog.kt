@@ -147,6 +147,7 @@ data class MockShowtime(
     val movieId: String? = null,
     val roomId: String? = null,
     val startsAt: String? = null,
+    val takenSeats: List<String> = emptyList(),
 )
 
 val mockShowtimesEstacion7 = listOf(
@@ -181,10 +182,44 @@ data class MockPurchase(
     val concessionsTotal: Int,
     val qrCode: String = "",
     val qrExpiresAtMillis: Long? = null,
+    val paymentMethodLabel: String = "Tarjeta digital",
+    val guestPurchase: Boolean = false,
+    val concessionItems: List<MockPurchaseConcessionItem> = emptyList(),
+    val ticketPackages: List<MockTicketPackage> = emptyList(),
+    val concessionPackages: List<MockConcessionPackage> = emptyList(),
 ) {
     val total: Int
         get() = ticketTotal + concessionsTotal
 }
+
+data class MockPurchaseConcessionItem(
+    val id: String,
+    val name: String,
+    val quantity: Int,
+    val type: String = "producto",
+)
+
+data class MockTicketPackage(
+    val id: String,
+    val label: String,
+    val seats: List<String>,
+    val qrCode: String,
+)
+
+data class MockConcessionPackage(
+    val id: String,
+    val label: String,
+    val items: List<MockPurchaseConcessionItem>,
+    val qrCode: String,
+)
+
+data class MockPaymentMethod(
+    val id: String,
+    val last4: String,
+    val holderName: String,
+    val expiry: String,
+    val isDefault: Boolean = false,
+)
 
 val mockPurchases = listOf(
     MockPurchase(
@@ -198,6 +233,31 @@ val mockPurchases = listOf(
         status = "Activa",
         ticketTotal = 90,
         concessionsTotal = 140,
+        paymentMethodLabel = "Invitado · folio + correo",
+        guestPurchase = true,
+        concessionItems = listOf(
+            MockPurchaseConcessionItem(id = "combo-faro", name = "Combo Faro", quantity = 1, type = "combo"),
+            MockPurchaseConcessionItem(id = "refill", name = "Refresco refill", quantity = 2),
+        ),
+        ticketPackages = listOf(
+            MockTicketPackage(
+                id = "ticket-pack-1",
+                label = "Boletos de sala",
+                seats = listOf("B7", "B8"),
+                qrCode = "TICKETS-CINE-2026-4A7F",
+            ),
+        ),
+        concessionPackages = listOf(
+            MockConcessionPackage(
+                id = "snack-pack-1",
+                label = "Recolectar en dulcería",
+                items = listOf(
+                    MockPurchaseConcessionItem(id = "combo-faro", name = "Combo Faro", quantity = 1, type = "combo"),
+                    MockPurchaseConcessionItem(id = "refill", name = "Refresco refill", quantity = 2),
+                ),
+                qrCode = "SNACKS-CINE-2026-4A7F",
+            ),
+        ),
     ),
     MockPurchase(
         folio = "CINE-2026-9K2M",
@@ -210,6 +270,10 @@ val mockPurchases = listOf(
         status = "Usada",
         ticketTotal = 45,
         concessionsTotal = 65,
+        paymentMethodLabel = "Visa • 4242",
+        concessionItems = listOf(
+            MockPurchaseConcessionItem(id = "nachos", name = "Nachos", quantity = 1),
+        ),
     ),
     MockPurchase(
         folio = "CINE-2026-6R8Q",
@@ -222,6 +286,23 @@ val mockPurchases = listOf(
         status = "Usada",
         ticketTotal = 135,
         concessionsTotal = 0,
+        paymentMethodLabel = "Mastercard • 4581",
+    ),
+)
+
+val mockPaymentMethods = listOf(
+    MockPaymentMethod(
+        id = "pm-visa-4242",
+        last4 = "4242",
+        holderName = "Alan Urias",
+        expiry = "09/29",
+        isDefault = true,
+    ),
+    MockPaymentMethod(
+        id = "pm-mc-4581",
+        last4 = "4581",
+        holderName = "Alan Urias",
+        expiry = "03/28",
     ),
 )
 
@@ -293,6 +374,7 @@ data class MockSocialUser(
     val avatarStart: Color,
     val avatarEnd: Color,
     val isOnline: Boolean = false,
+    val friendCode: String = "",
 )
 
 val mockSocialUsers = listOf(
@@ -306,6 +388,7 @@ val mockSocialUsers = listOf(
         avatarStart = Color(0xFFD8454A),
         avatarEnd = Color(0xFF781820),
         isOnline = true,
+        friendCode = "CINE-DR01",
     ),
     MockSocialUser(
         id = "mariana-lopez",
@@ -317,6 +400,7 @@ val mockSocialUsers = listOf(
         avatarStart = Color(0xFF3A6A8C),
         avatarEnd = Color(0xFF1A3A5A),
         isOnline = true,
+        friendCode = "CINE-ML02",
     ),
     MockSocialUser(
         id = "sofia-tamez",
@@ -327,6 +411,7 @@ val mockSocialUsers = listOf(
         bio = "Tiene una lista enorme de documentales pendientes.",
         avatarStart = Color(0xFF4AB07A),
         avatarEnd = Color(0xFF1F5A3D),
+        friendCode = "CINE-ST03",
     ),
     MockSocialUser(
         id = "luis-ibarra",
@@ -337,6 +422,7 @@ val mockSocialUsers = listOf(
         bio = "Siempre encuentra funciones familiares y estrenos ligeros.",
         avatarStart = Color(0xFFFFA84A),
         avatarEnd = Color(0xFFC06A12),
+        friendCode = "CINE-LI04",
     ),
     MockSocialUser(
         id = "camila-vega",
@@ -347,6 +433,7 @@ val mockSocialUsers = listOf(
         bio = "Le gustan las historias visuales y los finales agridulces.",
         avatarStart = Color(0xFF8C5AD8),
         avatarEnd = Color(0xFF3F236F),
+        friendCode = "CINE-CV05",
     ),
 )
 

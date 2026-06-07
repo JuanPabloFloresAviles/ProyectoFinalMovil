@@ -39,12 +39,14 @@ import com.example.proyectofinalmovil.screens.ConfirmationScreen
 import com.example.proyectofinalmovil.screens.TicketQrScreen
 import com.example.proyectofinalmovil.screens.HistoryScreen
 import com.example.proyectofinalmovil.screens.RecoverPurchaseScreen
+import com.example.proyectofinalmovil.screens.PaymentMethodsScreen
 import com.example.proyectofinalmovil.screens.ProfileScreen
 import com.example.proyectofinalmovil.screens.ReviewsScreen
 import com.example.proyectofinalmovil.screens.SocialHubScreen
 import com.example.proyectofinalmovil.screens.RequestsScreen
 import com.example.proyectofinalmovil.screens.FriendsScreen
 import com.example.proyectofinalmovil.screens.SearchUsersScreen
+import com.example.proyectofinalmovil.screens.AddFriendByCodeScreen
 import com.example.proyectofinalmovil.screens.ChatListScreen
 import com.example.proyectofinalmovil.screens.PrivateChatScreen
 import com.example.proyectofinalmovil.screens.RecommendMovieScreen
@@ -52,8 +54,10 @@ import com.example.proyectofinalmovil.screens.RecommendationsScreen
 import com.example.proyectofinalmovil.screens.AdminAccessDeniedScreen
 import com.example.proyectofinalmovil.screens.AdminDashboardScreen
 import com.example.proyectofinalmovil.screens.AdminConcessionsManagementScreen
+import com.example.proyectofinalmovil.screens.AdminEditShowtimeScreen
 import com.example.proyectofinalmovil.screens.AdminMovieImportScreen
 import com.example.proyectofinalmovil.screens.AdminMoviesManagementScreen
+import com.example.proyectofinalmovil.screens.AdminNewShowtimeScreen
 import com.example.proyectofinalmovil.screens.AdminReportsScreen
 import com.example.proyectofinalmovil.screens.AdminRoomsManagementScreen
 import com.example.proyectofinalmovil.screens.AdminShowtimesManagementScreen
@@ -63,13 +67,17 @@ import com.example.proyectofinalmovil.services.state.AdminSalesRange
 import com.example.proyectofinalmovil.services.state.ProvideAppUiState
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.services.api.AuthApi
+import com.example.proyectofinalmovil.services.api.ApiException
 import com.example.proyectofinalmovil.services.api.AuthException
 import com.example.proyectofinalmovil.services.api.CatalogApi
 import com.example.proyectofinalmovil.services.api.MobileStateApi
+import com.example.proyectofinalmovil.services.api.MobileCheckoutConcessionItem
+import com.example.proyectofinalmovil.services.api.MobileCheckoutPayload
 import com.example.proyectofinalmovil.services.api.TmdbApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 @Composable
 fun AppRoot() {
@@ -129,6 +137,8 @@ private fun AppNavHost(
     val tmdbApi = remember { TmdbApi() }
     val coroutineScope = rememberCoroutineScope()
     var adminSalesRange by remember { mutableStateOf(AdminSalesRange.LAST_7_DAYS) }
+    var checkoutErrorMessage by remember { mutableStateOf<String?>(null) }
+    var isProcessingCheckout by remember { mutableStateOf(false) }
 
     fun refreshAdminMetrics(range: AdminSalesRange) {
         adminSalesRange = range
@@ -196,6 +206,13 @@ private fun AppNavHost(
                                     }
                                 }.onSuccess { snapshot ->
                                     appState.replaceUserState(snapshot)
+                                }
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        mobileStateApi.listPaymentMethods(session.token)
+                                    }
+                                }.onSuccess { metodos ->
+                                    appState.replacePaymentMethods(metodos)
                                 }
                             }
                             val destination = if (appState.isAdmin()) {
@@ -283,10 +300,84 @@ private fun AppNavHost(
         }
         composable(AppDestination.Summary.route) {
             SummaryScreen(
-                onConfirmarCompra = {
-                    appState.confirmCheckout()
-                    navController.navigate(AppDestination.Confirmation.route)
+                onConfirmarCompra = { cvv ->
+                    val currentShowtime = appState.currentShowtime()
+                    val paymentMethod = appState.paymentMethods.firstOrNull {
+                        it.id == appState.selectedPaymentMethodId
+                    }
+                    val payload = MobileCheckoutPayload(
+                        nombreComprador = appState.signedInName.ifBlank { "Invitado Cine UABCS" },
+                        correoComprador = if (appState.signedInEmail.isNotBlank()) {
+                            appState.signedInEmail
+                        } else {
+                            appState.guestCheckoutEmail
+                        },
+                        telefonoComprador = null,
+                        esInvitado = appState.signedInEmail.isBlank(),
+                        funcionId = appState.currentShowtimeNumericId(),
+                        seats = appState.checkoutSeatLabels(),
+                        dulceria = buildList {
+                            appState.selectedConcessionItems().forEach { (item, quantity) ->
+                                add(
+                                    MobileCheckoutConcessionItem(
+                                        productoId = item.id.toIntOrNull(),
+                                        comboId = null,
+                                        cantidad = quantity,
+                                        precioUnitario = item.price,
+                                    ),
+                                )
+                            }
+                            appState.selectedComboItems().forEach { (combo, quantity) ->
+                                add(
+                                    MobileCheckoutConcessionItem(
+                                        productoId = null,
+                                        comboId = combo.id.toIntOrNull(),
+                                        cantidad = quantity,
+                                        precioUnitario = combo.price,
+                                    ),
+                                )
+                            }
+                        },
+                        paymentLast4 = paymentMethod?.last4 ?: "4242",
+                        cvv = cvv,
+                    )
+
+                    checkoutErrorMessage = null
+                    isProcessingCheckout = true
+                    coroutineScope.launch {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                mobileStateApi.checkout(
+                                    token = appState.authToken.ifBlank { null },
+                                    payload = payload,
+                                )
+                            }
+                        }.onSuccess { purchase ->
+                            appState.registerCompletedPurchase(purchase)
+                            runCatching {
+                                withContext(Dispatchers.IO) { catalogApi.getCatalog() }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                            }
+                            if (appState.signedInEmail.isNotBlank() && appState.authToken.isNotBlank()) {
+                                runCatching {
+                                    withContext(Dispatchers.IO) {
+                                        mobileStateApi.getUserState(appState.authToken)
+                                    }
+                                }.onSuccess { snapshot ->
+                                    appState.replaceUserState(snapshot)
+                                    appState.activePurchaseFolio = purchase.folio
+                                }
+                            }
+                            navController.navigate(AppDestination.Confirmation.route)
+                        }.onFailure { error ->
+                            checkoutErrorMessage = apiErrorMessage(error)
+                        }
+                        isProcessingCheckout = false
+                    }
                 },
+                isProcessing = isProcessingCheckout,
+                errorMessage = checkoutErrorMessage,
             )
         }
         composable(AppDestination.Confirmation.route) {
@@ -302,6 +393,8 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.TicketQr.route) {
+            var isSeparating by remember { mutableStateOf(false) }
+            var separarError by remember { mutableStateOf<String?>(null) }
             TicketQrScreen(
                 onIrAlHistorial = {
                     navController.navigate(AppDestination.History.route)
@@ -314,6 +407,41 @@ private fun AppNavHost(
                         popUpTo(AppDestination.Browse.route) { inclusive = true }
                     }
                 },
+                isSeparating = isSeparating,
+                separarError = separarError,
+                onSepararBoletos = { folio, seats ->
+                    if (appState.authToken.isBlank()) {
+                        separarError = "Inicia sesión para separar tus boletos."
+                        return@TicketQrScreen
+                    }
+                    if (seats.isEmpty()) return@TicketQrScreen
+                    separarError = null
+                    isSeparating = true
+                    coroutineScope.launch {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                mobileStateApi.separarBoletos(
+                                    token = appState.authToken,
+                                    folio = folio,
+                                    seats = seats,
+                                )
+                            }
+                        }.onSuccess { paquete ->
+                            appState.applySeparatedTicketPackage(folio, paquete)
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    mobileStateApi.getUserState(appState.authToken)
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceUserState(snapshot)
+                                appState.activePurchaseFolio = folio
+                            }
+                        }.onFailure { error ->
+                            separarError = apiErrorMessage(error)
+                        }
+                        isSeparating = false
+                    }
+                },
             )
         }
         composable(AppDestination.History.route) {
@@ -324,6 +452,11 @@ private fun AppNavHost(
                 },
                 onRecuperarCompra = {
                     navController.navigate(AppDestination.RecoverPurchase.route)
+                },
+                onIniciarSesion = {
+                    navController.navigate(AppDestination.Login.route) {
+                        launchSingleTop = true
+                    }
                 },
             )
         }
@@ -340,6 +473,10 @@ private fun AppNavHost(
         }
         composable(AppDestination.Reviews.route) {
             ReviewsScreen(
+                movieId = appState.selectedMovieId.takeIf { it.isNotBlank() },
+                onVolverADetalle = {
+                    navController.navigate(AppDestination.MovieDetail.route)
+                },
                 onVolverAPerfil = {
                     navController.navigate(AppDestination.Profile.route)
                 },
@@ -359,6 +496,9 @@ private fun AppNavHost(
                 onRecuperarCompra = {
                     navController.navigate(AppDestination.RecoverPurchase.route)
                 },
+                onAdministrarPagos = {
+                    navController.navigate(AppDestination.PaymentMethods.route)
+                },
                 onCerrarSesion = {
                     appState.signOut()
                     navController.navigate(AppDestination.Login.route) {
@@ -375,8 +515,57 @@ private fun AppNavHost(
                 },
             )
         }
+        composable(AppDestination.PaymentMethods.route) {
+            PaymentMethodsScreen(
+                paymentMethods = appState.paymentMethods,
+                defaultMethodId = appState.selectedPaymentMethodId,
+                onSetDefault = { methodId -> appState.setDefaultPaymentMethod(methodId) },
+                onRemove = { methodId ->
+                    if (appState.authToken.isNotBlank()) {
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    mobileStateApi.deletePaymentMethod(appState.authToken, methodId)
+                                }
+                            }.onSuccess { metodos ->
+                                appState.replacePaymentMethods(metodos)
+                            }.onFailure {
+                                appState.removePaymentMethod(methodId)
+                            }
+                        }
+                    } else {
+                        appState.removePaymentMethod(methodId)
+                    }
+                },
+                onAddMethod = { numeroTarjeta, holderName, expiry ->
+                    if (appState.authToken.isNotBlank()) {
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    mobileStateApi.savePaymentMethod(
+                                        token = appState.authToken,
+                                        titularTarjeta = holderName,
+                                        numeroTarjeta = numeroTarjeta,
+                                        vencimientoTarjeta = expiry,
+                                    )
+                                }
+                            }.onSuccess { metodos ->
+                                appState.replacePaymentMethods(metodos)
+                            }.onFailure {
+                                appState.addPaymentMethod(numeroTarjeta.takeLast(4), holderName, expiry)
+                            }
+                        }
+                    } else {
+                        appState.addPaymentMethod(numeroTarjeta.takeLast(4), holderName, expiry)
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         composable(AppDestination.SocialHub.route) {
             SocialHubScreen(
+                friends = appState.friendUsers(),
+                messages = appState.chatMessages,
                 friendsCount = appState.friendIds.size,
                 incomingRequestsCount = appState.incomingRequestIds.size,
                 outgoingRequestsCount = appState.outgoingRequestIds.size,
@@ -386,11 +575,17 @@ private fun AppNavHost(
                 onVerAmigos = {
                     navController.navigate(AppDestination.Friends.route)
                 },
-                onBuscarPersonas = {
-                    navController.navigate(AppDestination.SearchUsers.route)
+                onIniciarSesion = {
+                    navController.navigate(AppDestination.Login.route) {
+                        launchSingleTop = true
+                    }
                 },
-                onVerChats = {
-                    navController.navigate(AppDestination.ChatList.route)
+                onAgregarAmigo = {
+                    navController.navigate(AppDestination.AddFriendByCode.route)
+                },
+                onOpenChat = { userId ->
+                    appState.selectedChatFriendId = userId
+                    navController.navigate(AppDestination.PrivateChat.route)
                 },
                 onVerRecomendaciones = {
                     navController.navigate(AppDestination.Recommendations.route)
@@ -444,6 +639,27 @@ private fun AppNavHost(
                 friendIds = appState.friendIds,
                 incomingRequestIds = appState.incomingRequestIds,
                 outgoingRequestIds = appState.outgoingRequestIds,
+                onAdd = { userId ->
+                    appState.addFriendRequest(userId)
+                },
+                onCancel = { userId ->
+                    appState.cancelFriendRequest(userId)
+                },
+                onVerSolicitudes = {
+                    navController.navigate(AppDestination.Requests.route)
+                },
+                onVerAmigos = {
+                    navController.navigate(AppDestination.Friends.route)
+                },
+            )
+        }
+        composable(AppDestination.AddFriendByCode.route) {
+            AddFriendByCodeScreen(
+                users = appState.socialUsers,
+                friendIds = appState.friendIds,
+                incomingRequestIds = appState.incomingRequestIds,
+                outgoingRequestIds = appState.outgoingRequestIds,
+                myFriendCode = appState.userProfile.studentId,
                 onAdd = { userId ->
                     appState.addFriendRequest(userId)
                 },
@@ -620,9 +836,27 @@ private fun AppNavHost(
                     movies = appState.movies,
                     rooms = appState.adminRooms,
                     showtimesByMovieId = appState.showtimesByMovieId,
-                    onSaveShowtime = { movieId, index, showtime ->
+                    onGoToCreateShowtime = {
+                        navController.navigate(AppDestination.AdminNewShowtime.route)
+                    },
+                    onEditShowtime = { movieId, showtimeId ->
+                        appState.selectAdminShowtime(movieId, showtimeId)
+                        navController.navigate(AppDestination.AdminEditShowtime.route)
+                    },
+                    onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                )
+            }
+        }
+        composable(AppDestination.AdminNewShowtime.route) {
+            AdminGuard(
+                isAdmin = appState.isAdmin(),
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminNewShowtimeScreen(
+                    movies = appState.movies,
+                    rooms = appState.adminRooms,
+                    onCreateShowtime = { movieId, showtime ->
                         coroutineScope.launch {
-                            val existing = index?.let { appState.showtimesFor(movieId).getOrNull(it) }
                             val room = showtime.roomId?.let { roomId ->
                                 appState.adminRooms.firstOrNull { it.id == roomId }
                             } ?: appState.adminRooms.firstOrNull { it.name == showtime.room }
@@ -631,19 +865,83 @@ private fun AppNavHost(
                                 withContext(Dispatchers.IO) {
                                     catalogApi.saveShowtime(
                                         token = appState.authToken,
-                                        id = existing?.id ?: showtime.id,
+                                        id = null,
                                         movieId = movieId,
-                                        roomId = showtime.roomId ?: room?.id ?: existing?.roomId ?: "1",
-                                        startsAt = adminDateTimeFrom(showtime.time, existing?.startsAt ?: showtime.startsAt),
+                                        roomId = showtime.roomId ?: room?.id ?: "1",
+                                        startsAt = adminDateTimeFrom(showtime.time, showtime.startsAt),
                                         price = showtime.price,
                                     )
                                 }
                             }.onSuccess { snapshot ->
                                 appState.replaceCatalog(snapshot)
+                                navController.navigate(AppDestination.AdminShowtimes.route) {
+                                    popUpTo(AppDestination.AdminNewShowtime.route) { inclusive = true }
+                                }
                             }
                         }
                     },
-                    onBackToDashboard = { navController.navigate(AppDestination.AdminDashboard.route) },
+                    onBackToShowtimes = {
+                        navController.navigate(AppDestination.AdminShowtimes.route)
+                    },
+                )
+            }
+        }
+        composable(AppDestination.AdminEditShowtime.route) {
+            AdminGuard(
+                isAdmin = appState.isAdmin(),
+                onBackToLogin = { navController.navigateToLogin() },
+            ) {
+                AdminEditShowtimeScreen(
+                    movies = appState.movies,
+                    rooms = appState.adminRooms,
+                    showtimesByMovieId = appState.showtimesByMovieId,
+                    initialMovieId = appState.selectedAdminShowtimeMovieId,
+                    initialShowtime = appState.selectedAdminShowtime(),
+                    onSaveShowtime = { movieId, showtime ->
+                        coroutineScope.launch {
+                            val room = showtime.roomId?.let { roomId ->
+                                appState.adminRooms.firstOrNull { it.id == roomId }
+                            } ?: appState.adminRooms.firstOrNull { it.name == showtime.room }
+                                ?: appState.adminRooms.firstOrNull()
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    catalogApi.saveShowtime(
+                                        token = appState.authToken,
+                                        id = showtime.id,
+                                        movieId = movieId,
+                                        roomId = showtime.roomId ?: room?.id ?: "1",
+                                        startsAt = adminDateTimeFrom(showtime.time, showtime.startsAt),
+                                        price = showtime.price,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                                navController.navigate(AppDestination.AdminShowtimes.route) {
+                                    popUpTo(AppDestination.AdminEditShowtime.route) { inclusive = true }
+                                }
+                            }
+                        }
+                    },
+                    onDeleteShowtime = { showtimeId ->
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    catalogApi.deleteShowtime(
+                                        token = appState.authToken,
+                                        id = showtimeId,
+                                    )
+                                }
+                            }.onSuccess { snapshot ->
+                                appState.replaceCatalog(snapshot)
+                                navController.navigate(AppDestination.AdminShowtimes.route) {
+                                    popUpTo(AppDestination.AdminEditShowtime.route) { inclusive = true }
+                                }
+                            }
+                        }
+                    },
+                    onBackToShowtimes = {
+                        navController.navigate(AppDestination.AdminShowtimes.route)
+                    },
                 )
             }
         }
@@ -762,8 +1060,19 @@ private fun NavHostController.navigateToLogin() {
 
 private fun adminDateTimeFrom(time: String, existingStartsAt: String? = null): String {
     val safeTime = if (Regex("\\d{2}:\\d{2}").matches(time)) time else "18:00"
-    val datePrefix = existingStartsAt?.takeIf { it.length >= 10 }?.substring(0, 10) ?: "2026-12-31"
+    val datePrefix = existingStartsAt?.takeIf { it.length >= 10 }?.substring(0, 10) ?: LocalDate.now().toString()
     return "${datePrefix}T${safeTime}:00.000Z"
+}
+
+private fun apiErrorMessage(error: Throwable): String {
+    return when (error) {
+        is ApiException -> Regex("\"error\"\\s*:\\s*\"([^\"]+)\"")
+            .find(error.responseBody)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: "Error ${error.statusCode} al consultar la API"
+        else -> error.message ?: "No se pudo registrar la compra."
+    }
 }
 
 private fun currentTitle(route: String?): String {
@@ -788,6 +1097,7 @@ private fun currentTitle(route: String?): String {
         AppDestination.Requests.route -> AppDestination.Requests.title
         AppDestination.Friends.route -> AppDestination.Friends.title
         AppDestination.SearchUsers.route -> AppDestination.SearchUsers.title
+        AppDestination.AddFriendByCode.route -> AppDestination.AddFriendByCode.title
         AppDestination.ChatList.route -> AppDestination.ChatList.title
         AppDestination.PrivateChat.route -> AppDestination.PrivateChat.title
         AppDestination.RecommendMovie.route -> AppDestination.RecommendMovie.title
@@ -796,9 +1106,12 @@ private fun currentTitle(route: String?): String {
         AppDestination.AdminMovies.route -> AppDestination.AdminMovies.title
         AppDestination.AdminMovieImport.route -> AppDestination.AdminMovieImport.title
         AppDestination.AdminShowtimes.route -> AppDestination.AdminShowtimes.title
+        AppDestination.AdminNewShowtime.route -> AppDestination.AdminNewShowtime.title
+        AppDestination.AdminEditShowtime.route -> AppDestination.AdminEditShowtime.title
         AppDestination.AdminConcessions.route -> AppDestination.AdminConcessions.title
         AppDestination.AdminRooms.route -> AppDestination.AdminRooms.title
         AppDestination.AdminReports.route -> AppDestination.AdminReports.title
+        AppDestination.PaymentMethods.route -> AppDestination.PaymentMethods.title
         else -> "CineUABCS"
     }
 }

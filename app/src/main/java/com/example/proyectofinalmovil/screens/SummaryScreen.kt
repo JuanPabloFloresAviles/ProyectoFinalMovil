@@ -1,6 +1,8 @@
 package com.example.proyectofinalmovil.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,15 +20,22 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
@@ -46,18 +55,27 @@ private val BordeCard = Color(0xFFD6D1C2)
  */
 @Composable
 fun SummaryScreen(
-    onConfirmarCompra: () -> Unit,
+    onConfirmarCompra: (cvv: String) -> Unit,
+    isProcessing: Boolean = false,
+    errorMessage: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
+    var showingPaymentForm by remember { mutableStateOf(false) }
+    var newCardNumber by remember { mutableStateOf("") }
+    var newCardHolder by remember { mutableStateOf(appState.signedInName) }
+    var newCardExpiry by remember { mutableStateOf("") }
+    var cvv by remember { mutableStateOf("") }
     val pelicula = appState.currentMovie()
     val funcion = appState.currentShowtime()
+    val fechaFuncion = appState.currentShowtimeDateLabel()
     val asientosEjemplo = appState.checkoutSeatLabels()
     val precioBoleto = funcion.price
     val subtotalBoletos = appState.ticketTotal()
     val itemsDulceria = appState.selectedConcessionItems().map { (producto, cantidad) ->
         DulceriaResumenItem(producto, cantidad)
     }
+    val itemsCombo = appState.selectedComboItems()
     val subtotalDulceria = appState.concessionTotal()
     val totalGeneral = appState.totalToPay()
 
@@ -115,7 +133,7 @@ fun SummaryScreen(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${funcion.room} · ${funcion.time} · ${funcion.format}",
+                    text = "$fechaFuncion · ${funcion.room} · ${funcion.time} · ${funcion.format}",
                     style = MaterialTheme.typography.bodySmall,
                     color = GrisTexto.copy(alpha = 0.6f),
                 )
@@ -151,7 +169,7 @@ fun SummaryScreen(
 
             // Sección de dulcería
             SeccionResumen(titulo = "Dulcería") {
-                if (itemsDulceria.isEmpty()) {
+                if (itemsDulceria.isEmpty() && itemsCombo.isEmpty()) {
                     Text(
                         text = "Sin productos agregados",
                         style = MaterialTheme.typography.bodyMedium,
@@ -178,6 +196,194 @@ fun SummaryScreen(
                             )
                         }
                     }
+                    itemsCombo.forEach { (combo, cantidad) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "${combo.name} × $cantidad",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = GrisTexto.copy(alpha = 0.7f),
+                                )
+                                val detalle = appState.comboProductNames(combo).joinToString(", ")
+                                if (detalle.isNotBlank()) {
+                                    Text(
+                                        text = detalle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = GrisTexto.copy(alpha = 0.5f),
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "$${cantidad * combo.price}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = GrisTexto,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SeccionResumen(titulo = "Pago") {
+                if (appState.signedInEmail.isBlank()) {
+                    UiInput(
+                        value = appState.guestCheckoutEmail,
+                        onValueChange = { appState.updateGuestCheckoutEmail(it) },
+                        label = "Correo para recuperar la compra",
+                        placeholder = "correo@ejemplo.com",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Se guardará junto al folio para recuperar boletos y dulcería más tarde.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GrisTexto.copy(alpha = 0.62f),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                Text(
+                    text = "Método de pago",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = GrisTexto,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                if (showingPaymentForm) {
+                    UiInput(
+                        value = newCardNumber,
+                        onValueChange = { value ->
+                            newCardNumber = value.filter { it.isDigit() }.take(16)
+                        },
+                        label = "Número de tarjeta",
+                        placeholder = "4242424242424242",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    UiInput(
+                        value = newCardHolder,
+                        onValueChange = { newCardHolder = it },
+                        label = "Titular",
+                        placeholder = "Nombre como aparece en la tarjeta",
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    UiInput(
+                        value = newCardExpiry,
+                        onValueChange = { value ->
+                            val digits = value.filter { it.isDigit() }.take(4)
+                            newCardExpiry = when {
+                                digits.length <= 2 -> digits
+                                else -> "${digits.take(2)}/${digits.drop(2)}"
+                            }
+                        },
+                        label = "Vencimiento",
+                        placeholder = "09/29",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        UiPrimaryButton(
+                            text = "Guardar tarjeta",
+                            onClick = {
+                                appState.addPaymentMethod(
+                                    last4 = newCardNumber,
+                                    holderName = newCardHolder,
+                                    expiry = newCardExpiry,
+                                )
+                                showingPaymentForm = false
+                                newCardNumber = ""
+                                newCardHolder = appState.signedInName
+                                newCardExpiry = ""
+                            },
+                            enabled = newCardNumber.length >= 4 &&
+                                newCardHolder.isNotBlank() &&
+                                newCardExpiry.length == 5,
+                            fillWidth = false,
+                            modifier = Modifier.weight(1f),
+                        )
+                        PaymentActionButton(
+                            text = "Cancelar",
+                            onClick = {
+                                showingPaymentForm = false
+                                newCardNumber = ""
+                                newCardHolder = appState.signedInName
+                                newCardExpiry = ""
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                } else {
+                    PaymentActionButton(
+                        text = "Agregar nuevo método",
+                        onClick = { showingPaymentForm = true },
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                appState.paymentMethods.forEach { method ->
+                    val selected = method.id == appState.selectedPaymentMethodId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) AzulAccion.copy(alpha = 0.08f) else Color.White)
+                            .border(
+                                width = 1.dp,
+                                color = if (selected) AzulAccion.copy(alpha = 0.35f) else BordeCard,
+                                shape = RoundedCornerShape(12.dp),
+                            )
+                            .clickable { appState.setSelectedPaymentMethod(method.id) }
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                text = "Tarjeta • ${method.last4}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = GrisTexto,
+                            )
+                            Text(
+                                text = "${method.holderName} · vence ${method.expiry}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GrisTexto.copy(alpha = 0.55f),
+                            )
+                        }
+                        if (selected) {
+                            Text(
+                                text = "Usando",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = AzulAccion,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (appState.selectedPaymentMethodId.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    UiInput(
+                        value = cvv,
+                        onValueChange = { value -> cvv = value.filter { it.isDigit() }.take(4) },
+                        label = "CVV",
+                        placeholder = "123",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    )
+                    Text(
+                        text = "Por seguridad, tu CVV se valida pero no se almacena.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GrisTexto.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
 
@@ -222,6 +428,16 @@ fun SummaryScreen(
                 }
             }
 
+            if (!errorMessage.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
         }
 
@@ -232,8 +448,13 @@ fun SummaryScreen(
         ) {
             UiPrimaryButton(
                 text = "Confirmar compra  ›",
-                onClick = onConfirmarCompra,
-                enabled = totalGeneral > 0 && asientosEjemplo.isNotEmpty(),
+                onClick = { onConfirmarCompra(cvv) },
+                enabled = !isProcessing &&
+                    totalGeneral > 0 &&
+                    asientosEjemplo.isNotEmpty() &&
+                    appState.selectedPaymentMethodId.isNotBlank() &&
+                    cvv.length in 3..4 &&
+                    (appState.signedInEmail.isNotBlank() || appState.guestCheckoutEmail.contains("@")),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -246,6 +467,30 @@ private data class DulceriaResumenItem(
     val producto: MockConcessionItem,
     val cantidad: Int,
 )
+
+@Composable
+private fun PaymentActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White)
+            .border(1.dp, BordeCard, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = AzulAccion,
+        )
+    }
+}
 
 /**
  * Sección con título y contenido dentro de una tarjeta.
