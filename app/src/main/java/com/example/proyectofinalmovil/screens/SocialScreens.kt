@@ -1,6 +1,7 @@
 package com.example.proyectofinalmovil.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +15,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,13 +33,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.proyectofinalmovil.components.AppIcons
 import com.example.proyectofinalmovil.components.UiGhostButton
+import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
+import com.example.proyectofinalmovil.services.mock.MockChatMessage
 import com.example.proyectofinalmovil.services.mock.MockSocialUser
+import com.example.proyectofinalmovil.services.mock.mockChatMessages
 import com.example.proyectofinalmovil.services.mock.mockIncomingRequestIds
 import com.example.proyectofinalmovil.services.mock.mockInitialFriendIds
 import com.example.proyectofinalmovil.services.mock.mockOutgoingRequestIds
 import com.example.proyectofinalmovil.services.mock.mockSocialUsers
+import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
 private val FondoCrema = Color(0xFFF9F6EB)
@@ -44,16 +55,33 @@ private val VerdeSuave = Color(0xFFE7F5E8)
 
 @Composable
 fun SocialHubScreen(
+    friends: List<MockSocialUser>,
+    messages: List<MockChatMessage>,
     friendsCount: Int,
     incomingRequestsCount: Int,
     outgoingRequestsCount: Int,
     onVerSolicitudes: () -> Unit,
     onVerAmigos: () -> Unit,
-    onBuscarPersonas: () -> Unit,
-    onVerChats: () -> Unit,
+    onIniciarSesion: () -> Unit,
+    onAgregarAmigo: () -> Unit,
+    onOpenChat: (String) -> Unit,
     onVerRecomendaciones: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val appState = LocalAppUiState.current
+    val isSignedIn = appState.authToken.isNotBlank()
+    var searchQuery by remember { mutableStateOf("") }
+    val recentChats = remember(friends, messages, searchQuery) {
+        friends.mapNotNull { friend ->
+            val thread = messages.filter { it.friendId == friend.id }
+            val lastMessage = thread.lastOrNull() ?: return@mapNotNull null
+            friend to lastMessage
+        }.filter { (friend, _) ->
+            searchQuery.isBlank() ||
+                friend.name.contains(searchQuery, ignoreCase = true)
+        }.sortedByDescending { (_, message) -> messageSortKey(message.time) }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -61,6 +89,11 @@ fun SocialHubScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
+        if (!isSignedIn) {
+            SignedOutSocialState(onIniciarSesion = onIniciarSesion)
+            return@Column
+        }
+
         ScreenIntro(
             eyebrow = "COMUNIDAD",
             title = "Centro social",
@@ -70,47 +103,105 @@ fun SocialHubScreen(
         Spacer(modifier = Modifier.height(18.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SocialStatCard("Amigos", friendsCount.toString(), Modifier.weight(1f))
-            SocialStatCard("Entrantes", incomingRequestsCount.toString(), Modifier.weight(1f))
+            SocialStatCard(
+                label = "Amigos",
+                value = friendsCount.toString(),
+                modifier = Modifier.weight(1f),
+                onClick = onVerAmigos,
+            )
+            SocialStatCard(
+                label = "Entrantes",
+                value = incomingRequestsCount.toString(),
+                modifier = Modifier.weight(1f),
+                onClick = onVerSolicitudes,
+            )
             SocialStatCard("Enviadas", outgoingRequestsCount.toString(), Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        ActionCard(
-            title = "Solicitudes de amistad",
-            body = "Acepta, rechaza o cancela solicitudes pendientes.",
-            primaryText = "Ver solicitudes",
-            onPrimaryClick = onVerSolicitudes,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        ActionCard(
-            title = "Mis amigos",
-            body = "Consulta quiénes ya forman parte de tu red.",
-            primaryText = "Ver amigos",
-            onPrimaryClick = onVerAmigos,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        ActionCard(
-            title = "Buscar personas",
-            body = "Descubre estudiantes con gustos similares.",
-            primaryText = "Buscar usuarios",
-            onPrimaryClick = onBuscarPersonas,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        ActionCard(
-            title = "Chats",
-            body = "Abre conversaciones privadas con tus amigos.",
-            primaryText = "Ver chats",
-            onPrimaryClick = onVerChats,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            UiInput(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = "Buscar amigos",
+                placeholder = "Escribe un nombre",
+                modifier = Modifier.weight(1f),
+            )
+            Surface(
+                onClick = onAgregarAmigo,
+                shape = MaterialTheme.shapes.medium,
+                color = AzulAccion,
+                modifier = Modifier.size(56.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = AppIcons.AddFriend,
+                        contentDescription = "Agregar amigo por código",
+                        tint = Color.White,
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
         ActionCard(
             title = "Recomendaciones",
             body = "Consulta películas compartidas por tu red.",
             primaryText = "Ver recomendaciones",
             onPrimaryClick = onVerRecomendaciones,
         )
+
+        Spacer(modifier = Modifier.height(18.dp))
+        SectionTitle("Chats recientes")
+        when {
+            friends.isEmpty() -> EmptySocialCard("Agrega amigos para empezar a chatear.")
+            recentChats.isEmpty() && searchQuery.isNotBlank() ->
+                EmptySocialCard("No encontramos amigos o chats con esa búsqueda.")
+            recentChats.isEmpty() ->
+                EmptySocialCard("Todavía no hay conversaciones activas.")
+            else -> recentChats.forEach { (friend, lastMessage) ->
+                ChatPreviewCard(
+                    friend = friend,
+                    lastMessage = lastMessage,
+                    onOpenChat = { onOpenChat(friend.id) },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SignedOutSocialState(
+    onIniciarSesion: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Aún no has iniciado sesión",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = GrisTexto,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            UiPrimaryButton(
+                text = "Iniciar Sesión",
+                onClick = onIniciarSesion,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
@@ -184,6 +275,20 @@ fun RequestsScreen(
             secondaryText = "Buscar personas",
             onSecondaryClick = onBuscarPersonas,
         )
+    }
+}
+
+private fun messageSortKey(time: String): Int {
+    val trimmed = time.trim()
+    return when {
+        trimmed.equals("Ahora", ignoreCase = true) -> 100_000
+        trimmed.equals("Nuevo", ignoreCase = true) -> 99_000
+        trimmed.equals("Ayer", ignoreCase = true) -> 50_000
+        Regex("""\d{2}:\d{2}""").matches(trimmed) -> {
+            val parts = trimmed.split(":")
+            parts[0].toIntOrNull()?.times(60)?.plus(parts[1].toIntOrNull() ?: 0) ?: 0
+        }
+        else -> 1
     }
 }
 
@@ -303,6 +408,138 @@ fun SearchUsersScreen(
 }
 
 @Composable
+fun AddFriendByCodeScreen(
+    users: List<MockSocialUser>,
+    friendIds: List<String>,
+    incomingRequestIds: List<String>,
+    outgoingRequestIds: List<String>,
+    myFriendCode: String,
+    onAdd: (String) -> Unit,
+    onCancel: (String) -> Unit,
+    onVerSolicitudes: () -> Unit,
+    onVerAmigos: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var codeQuery by remember { mutableStateOf("") }
+    var submittedCode by remember { mutableStateOf("") }
+
+    val match = remember(users, submittedCode) {
+        val normalized = submittedCode.trim()
+        if (normalized.isBlank()) {
+            null
+        } else {
+            users.find { it.friendCode.isNotBlank() && it.friendCode.equals(normalized, ignoreCase = true) }
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(FondoCrema),
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+        ) {
+            ScreenIntro(
+                eyebrow = "AGREGAR",
+                title = "Agregar por código",
+                body = "Pide el código de amigo de la persona que quieras agregar y escríbelo para enviarle una solicitud.",
+            )
+
+            if (myFriendCode.isNotBlank()) {
+                Spacer(modifier = Modifier.height(18.dp))
+                MyFriendCodeCard(code = myFriendCode)
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+            UiInput(
+                value = codeQuery,
+                onValueChange = { codeQuery = it },
+                label = "Código de amigo",
+                placeholder = "Ej. CINE-AB12",
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            UiPrimaryButton(
+                text = "Buscar código",
+                onClick = { submittedCode = codeQuery },
+                enabled = codeQuery.isNotBlank(),
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+            when {
+                submittedCode.isBlank() -> Unit
+                match == null ->
+                    EmptySocialCard("No encontramos a nadie con el código \"${submittedCode.trim()}\".")
+                else -> {
+                    val isFriend = match.id in friendIds
+                    val isOutgoing = match.id in outgoingRequestIds
+                    val isIncoming = match.id in incomingRequestIds
+                    SocialUserCard(
+                        user = match,
+                        primaryText = when {
+                            isFriend -> "Ya es amigo"
+                            isOutgoing -> "Cancelar solicitud"
+                            isIncoming -> "Responder solicitud"
+                            else -> "Agregar"
+                        },
+                        onPrimaryClick = {
+                            when {
+                                isOutgoing -> onCancel(match.id)
+                                !isFriend && !isIncoming -> onAdd(match.id)
+                            }
+                        },
+                        enabled = !isFriend && !isIncoming,
+                    )
+                }
+            }
+        }
+
+        BottomActions(
+            primaryText = "Ver solicitudes",
+            onPrimaryClick = onVerSolicitudes,
+            secondaryText = "Ver amigos",
+            onSecondaryClick = onVerAmigos,
+        )
+    }
+}
+
+@Composable
+private fun MyFriendCodeCard(code: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = VerdeSuave,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BordeCard),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "TU CÓDIGO DE AMIGO",
+                style = MaterialTheme.typography.labelSmall,
+                color = AzulAccion,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = code,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = GrisTexto,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Compártelo para que otras personas te agreguen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = GrisTexto.copy(alpha = 0.65f),
+            )
+        }
+    }
+}
+
+@Composable
 private fun ScreenIntro(
     eyebrow: String,
     title: String,
@@ -335,6 +572,7 @@ private fun SocialStatCard(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier,
@@ -343,7 +581,15 @@ private fun SocialStatCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, BordeCard),
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 12.dp),
+            modifier = Modifier
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -554,13 +800,16 @@ private fun BottomActions(
 private fun SocialHubScreenPreview() {
     ProyectoFinalMovilTheme {
         SocialHubScreen(
+            friends = mockSocialUsers.filter { it.id in mockInitialFriendIds },
+            messages = mockChatMessages,
             friendsCount = mockInitialFriendIds.size,
             incomingRequestsCount = mockIncomingRequestIds.size,
             outgoingRequestsCount = mockOutgoingRequestIds.size,
             onVerSolicitudes = {},
             onVerAmigos = {},
-            onBuscarPersonas = {},
-            onVerChats = {},
+            onIniciarSesion = {},
+            onAgregarAmigo = {},
+            onOpenChat = {},
             onVerRecomendaciones = {},
         )
     }

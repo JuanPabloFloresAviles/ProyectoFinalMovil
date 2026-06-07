@@ -7,8 +7,6 @@ import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.state.AdminConcessionCombo
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 data class CatalogSnapshot(
@@ -72,6 +70,16 @@ class CatalogApi(
             .put("salaId", roomId)
             .put("fechaHora", startsAt)
             .put("precioBase", price)
+        return parseCatalog(JSONObject(client.postJson("mobile/admin/funciones", body.toString(), token)))
+    }
+
+    fun deleteShowtime(
+        token: String,
+        id: String,
+    ): CatalogSnapshot {
+        val body = JSONObject()
+            .put("action", "delete")
+            .put("id", id)
         return parseCatalog(JSONObject(client.postJson("mobile/admin/funciones", body.toString(), token)))
     }
 
@@ -170,6 +178,7 @@ class CatalogApi(
         return buildList {
             for (index in 0 until json.length()) {
                 val item = json.getJSONObject(index)
+                val takenSeatsJson = item.optJSONArray("takenSeats") ?: JSONArray()
                 add(
                     MockShowtime(
                         time = laPazTime(item.optString("fechaHora")),
@@ -182,6 +191,7 @@ class CatalogApi(
                         movieId = item.optString("peliculaId"),
                         roomId = item.optString("salaId"),
                         startsAt = item.optString("fechaHora"),
+                        takenSeats = List(takenSeatsJson.length()) { takenSeatsJson.getString(it) },
                     ),
                 )
             }
@@ -257,16 +267,15 @@ class CatalogApi(
     }
 }
 
-private val laPazZone: ZoneId = ZoneId.of("America/Mazatlan")
 private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 private fun laPazTime(value: String?): String {
     if (value.isNullOrBlank()) return "18:00"
-    return runCatching {
-        Instant.parse(value).atZone(laPazZone).format(timeFormatter)
-    }.getOrElse {
-        value.takeIf { it.length >= 16 }?.substring(11, 16) ?: "18:00"
-    }
+    return value
+        .takeIf { it.length >= 16 }
+        ?.substring(11, 16)
+        ?: value.takeIf { it.length >= 5 }?.substring(0, 5)
+        ?: "18:00"
 }
 
 private fun normalizedLanguage(value: String): String {

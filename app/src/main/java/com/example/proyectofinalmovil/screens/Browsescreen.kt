@@ -58,8 +58,7 @@ import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 import java.text.SimpleDateFormat
-import java.time.Instant
-import java.time.ZoneId
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
@@ -85,6 +84,21 @@ fun BrowseScreen(
     }
 
     val destacada = appState.movies.firstOrNull { it.isFeatured } ?: appState.movies.first()
+    val todayLabel = remember {
+        LocalDate.now()
+            .format(DateTimeFormatter.ofPattern("EEEE · d MMMM", Locale("es", "MX")))
+            .uppercase(Locale("es", "MX"))
+    }
+    val greetingName = appState.userProfile.name
+        .ifBlank { appState.signedInName }
+        .trim()
+        .substringBefore(" ")
+        .ifBlank { "bienvenido" }
+    val greetingText = if (greetingName.equals("bienvenido", ignoreCase = true)) {
+        "Hola"
+    } else {
+        "Hola, $greetingName"
+    }
 
     var filtroActivo by remember { mutableStateOf("Estrenos") }
 
@@ -111,12 +125,12 @@ fun BrowseScreen(
         ) {
             Column {
                 Text(
-                    text = "JUEVES · 14 MAYO",
+                    text = todayLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "Hola, Alejandra",
+                    text = greetingText,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -268,7 +282,11 @@ fun AllShowtimesScreen(
                     synopsis = appState.synopsisFor(movie.id).takeIf { it != "Sinopsis no disponible." }
                         ?: movie.synopsis,
                     onShowtimeClick = { showtime ->
-                        onShowtimeClick(movie.id, showtime.id?.takeIf { it.isNotBlank() } ?: "${movie.id}|${showtime.time}")
+                        onShowtimeClick(
+                            movie.id,
+                            showtime.id?.takeIf { it.isNotBlank() }
+                                ?: "${movie.id}|${showtime.startsAt ?: ""}|${showtime.roomId ?: showtime.room}|${showtime.time}",
+                        )
                     },
                 )
             }
@@ -522,16 +540,9 @@ private fun dateLabelForOffset(dayOffset: Int): String {
     }
 }
 
-private val LaPazZone: ZoneId = ZoneId.of("America/Mazatlan")
-private val LaPazDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
 private fun laPazDateKey(value: String?): String? {
     if (value.isNullOrBlank()) return null
-    return runCatching {
-        Instant.parse(value).atZone(LaPazZone).format(LaPazDateFormatter)
-    }.getOrElse {
-        value.takeIf { it.length >= 10 }?.substring(0, 10)
-    }
+    return value.takeIf { it.length >= 10 }?.substring(0, 10)
 }
 
 @Composable

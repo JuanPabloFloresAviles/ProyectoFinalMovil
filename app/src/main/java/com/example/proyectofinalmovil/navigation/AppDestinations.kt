@@ -24,6 +24,7 @@ sealed class AppDestination(
     data object Requests : AppDestination("requests", "Solicitudes")
     data object Friends : AppDestination("friends", "Mis amigos")
     data object SearchUsers : AppDestination("search-users", "Buscar usuarios")
+    data object AddFriendByCode : AppDestination("add-friend-code", "Agregar por código")
     data object ChatList : AppDestination("chat-list", "Lista de chats")
     data object PrivateChat : AppDestination("private-chat", "Chat privado")
     data object RecommendMovie : AppDestination("recommend-movie", "Recomendar pelicula")
@@ -32,9 +33,12 @@ sealed class AppDestination(
     data object AdminMovies : AppDestination("admin-movies", "Gestión de películas")
     data object AdminMovieImport : AppDestination("admin-movie-import", "Importar películas")
     data object AdminShowtimes : AppDestination("admin-showtimes", "Gestión de funciones")
+    data object AdminNewShowtime : AppDestination("admin-new-showtime", "Nueva función")
+    data object AdminEditShowtime : AppDestination("admin-edit-showtime", "Editar función")
     data object AdminConcessions : AppDestination("admin-concessions", "Gestión de dulcería")
     data object AdminRooms : AppDestination("admin-rooms", "Salas y butacas")
     data object AdminReports : AppDestination("admin-reports", "Ventas y estadísticas")
+    data object PaymentMethods : AppDestination("payment-methods", "Métodos de pago")
 }
 
 val bottomBarDestinations = listOf(

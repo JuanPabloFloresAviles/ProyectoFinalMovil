@@ -208,6 +208,20 @@ private fun RecoveredPurchaseCard(
                 fontWeight = FontWeight.SemiBold,
                 color = GrisTexto,
             )
+            if (purchase.concessionItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Dulcería: ${purchase.concessionItems.joinToString(", ") { "${it.quantity} ${it.name}" }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GrisTexto.copy(alpha = 0.72f),
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Pago: ${purchase.paymentMethodLabel}",
+                style = MaterialTheme.typography.bodySmall,
+                color = GrisTexto.copy(alpha = 0.72f),
+            )
             Spacer(modifier = Modifier.height(14.dp))
             UiPrimaryButton(
                 text = "Ver boleto QR",

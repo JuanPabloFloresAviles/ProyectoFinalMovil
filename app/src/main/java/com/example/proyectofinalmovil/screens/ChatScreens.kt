@@ -375,7 +375,7 @@ fun RecommendationsScreen(
 }
 
 @Composable
-private fun ChatPreviewCard(
+fun ChatPreviewCard(
     friend: MockSocialUser,
     lastMessage: MockChatMessage?,
     onOpenChat: () -> Unit,

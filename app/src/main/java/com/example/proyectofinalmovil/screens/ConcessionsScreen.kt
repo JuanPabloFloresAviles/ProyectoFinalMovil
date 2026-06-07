@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
+import com.example.proyectofinalmovil.services.state.AdminConcessionCombo
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 
@@ -57,7 +58,8 @@ fun ConcessionsScreen(
 ) {
     val appState = LocalAppUiState.current
     val cantidades = appState.concessionQuantities
-    val totalProductos = cantidades.values.sum()
+    val cantidadesCombo = appState.comboQuantities
+    val totalProductos = cantidades.values.sum() + cantidadesCombo.values.sum()
     val totalMonto = appState.concessionTotal()
 
     Column(
@@ -103,6 +105,35 @@ fun ConcessionsScreen(
                 modifier = Modifier.padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (appState.concessionCombos.isNotEmpty()) {
+                    Text(
+                        text = "Combos sugeridos",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = GrisTexto,
+                    )
+                    appState.concessionCombos.forEach { combo ->
+                        val cantidad = cantidadesCombo[combo.id] ?: 0
+                        TarjetaCombo(
+                            combo = combo,
+                            detalle = appState.comboProductNames(combo).joinToString(", "),
+                            cantidad = cantidad,
+                            onIncrementar = { appState.setComboQuantity(combo.id, cantidad + 1) },
+                            onDecrementar = {
+                                if (cantidad > 0) {
+                                    appState.setComboQuantity(combo.id, cantidad - 1)
+                                }
+                            },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Productos individuales",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = GrisTexto,
+                    )
+                }
                 appState.concessions.forEach { item ->
                     val cantidad = cantidades[item.id] ?: 0
                     TarjetaProducto(
@@ -186,6 +217,60 @@ fun ConcessionsScreen(
  * Tarjeta individual de producto de dulcería con selector de cantidad.
  */
 @Composable
+private fun TarjetaCombo(
+    combo: AdminConcessionCombo,
+    detalle: String,
+    cantidad: Int,
+    onIncrementar: () -> Unit,
+    onDecrementar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFF0F7FD),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = if (cantidad > 0) AzulClaro.copy(alpha = 0.5f) else BordeCard,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = combo.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GrisTexto,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (detalle.isBlank()) combo.description else detalle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GrisTexto.copy(alpha = 0.6f),
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "$${combo.price} MXN",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AzulAccion,
+                )
+            }
+            QuantityStepper(
+                cantidad = cantidad,
+                onIncrementar = onIncrementar,
+                onDecrementar = onDecrementar,
+            )
+        }
+    }
+}
+
+@Composable
 private fun TarjetaProducto(
     item: MockConcessionItem,
     cantidad: Int,
@@ -232,56 +317,66 @@ private fun TarjetaProducto(
             }
 
             // Selector de cantidad
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                // Botón decrementar
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (cantidad > 0) AzulAccion.copy(alpha = 0.1f) else Color(0xFFF2EFE4)
-                        )
-                        .clickable(enabled = cantidad > 0) { onDecrementar() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "−",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (cantidad > 0) AzulAccion else GrisTexto.copy(alpha = 0.3f),
-                    )
-                }
+            QuantityStepper(
+                cantidad = cantidad,
+                onIncrementar = onIncrementar,
+                onDecrementar = onDecrementar,
+            )
+        }
+    }
+}
 
-                // Cantidad actual
-                Text(
-                    text = "$cantidad",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = GrisTexto,
-                    modifier = Modifier.width(24.dp),
-                    textAlign = TextAlign.Center,
+@Composable
+private fun QuantityStepper(
+    cantidad: Int,
+    onIncrementar: () -> Unit,
+    onDecrementar: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(
+                    if (cantidad > 0) AzulAccion.copy(alpha = 0.1f) else Color(0xFFF2EFE4)
                 )
+                .clickable(enabled = cantidad > 0) { onDecrementar() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "−",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (cantidad > 0) AzulAccion else GrisTexto.copy(alpha = 0.3f),
+            )
+        }
 
-                // Botón incrementar
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(AzulAccion)
-                        .clickable { onIncrementar() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "+",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                    )
-                }
-            }
+        Text(
+            text = "$cantidad",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = GrisTexto,
+            modifier = Modifier.width(24.dp),
+            textAlign = TextAlign.Center,
+        )
+
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(AzulAccion)
+                .clickable { onIncrementar() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "+",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
         }
     }
 }

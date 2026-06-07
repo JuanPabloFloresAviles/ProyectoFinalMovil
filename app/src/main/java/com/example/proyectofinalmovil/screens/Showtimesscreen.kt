@@ -42,6 +42,7 @@ import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
@@ -70,18 +71,24 @@ fun ShowtimesScreen(
     val todasLasFunciones = appState.showtimesFor(movieId)
     val dias = remember { generarDias() }
 
-    var diaSeleccionado by remember { mutableStateOf(1) }
+    var diaSeleccionado by remember { mutableStateOf(0) }
     var formatoActivo by remember { mutableStateOf("Todo") }
     var funcionSeleccionada by remember { mutableStateOf<MockShowtime?>(null) }
+    val fechaSeleccionada = remember(diaSeleccionado) { dateKeyForOffset(diaSeleccionado) }
 
-    val funcionesFiltradas = remember(formatoActivo) {
+    val funcionesFiltradas = remember(todasLasFunciones, fechaSeleccionada, diaSeleccionado, formatoActivo) {
+        val funcionesDelDia = todasLasFunciones
+            .filter { it.matchesDate(fechaSeleccionada, diaSeleccionado) }
+            .distinctBy { it.id?.takeIf { id -> id.isNotBlank() } ?: "${it.startsAt}-${it.time}-${it.room}" }
+            .sortedBy { it.startsAt ?: it.time }
+
         when (formatoActivo) {
-            "Todo" -> todasLasFunciones
-            "2D" -> todasLasFunciones.filter { it.format.contains("2D") }
-            "IMAX" -> todasLasFunciones.filter { it.format.contains("IMAX") }
-            "Subtitulada" -> todasLasFunciones.filter { it.format.contains("Subt") }
-            "Doblada" -> todasLasFunciones.filter { it.format.contains("Dob") }
-            else -> todasLasFunciones
+            "Todo" -> funcionesDelDia
+            "2D" -> funcionesDelDia.filter { it.format.contains("2D") }
+            "IMAX" -> funcionesDelDia.filter { it.format.contains("IMAX") }
+            "Subtitulada" -> funcionesDelDia.filter { it.format.contains("Subt", ignoreCase = true) }
+            "Doblada" -> funcionesDelDia.filter { it.format.contains("Dob", ignoreCase = true) }
+            else -> funcionesDelDia
         }
     }
 
@@ -239,7 +246,10 @@ fun ShowtimesScreen(
                 text = "Continuar a butacas  ›",
                 onClick = {
                     funcionSeleccionada?.let {
-                        onContinuarAButacas("$movieId|${it.time}")
+                        onContinuarAButacas(
+                            it.id?.takeIf { id -> id.isNotBlank() }
+                                ?: "$movieId|${it.startsAt ?: ""}|${it.roomId ?: it.room}|${it.time}",
+                        )
                     }
                 },
                 enabled = funcionSeleccionada != null,
@@ -365,6 +375,23 @@ private fun IndicicadorDisponibilidad(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+private fun MockShowtime.matchesDate(dateKey: String, selectedDayOffset: Int): Boolean {
+    val startsAtKey = laPazDateKey(startsAt)
+    if (startsAtKey == null) return selectedDayOffset == 0
+    return startsAtKey == dateKey
+}
+
+private fun dateKeyForOffset(dayOffset: Int): String {
+    val calendar = Calendar.getInstance()
+    calendar.add(Calendar.DAY_OF_YEAR, dayOffset)
+    return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
+}
+
+private fun laPazDateKey(startsAt: String?): String? {
+    if (startsAt.isNullOrBlank()) return null
+    return startsAt.takeIf { it.length >= 10 }?.substring(0, 10)
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFFFFF6EA)

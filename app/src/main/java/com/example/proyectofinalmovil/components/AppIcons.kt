@@ -7,7 +7,9 @@ import androidx.compose.material.icons.rounded.ConfirmationNumber
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LocalMovies
+import androidx.compose.material.icons.rounded.PersonAddAlt1
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -21,5 +23,7 @@ object AppIcons {
     val Profile: ImageVector = Icons.Rounded.AccountCircle
     val History: ImageVector = Icons.Rounded.Schedule
     val Search: ImageVector = Icons.Rounded.Search
+    val AddFriend: ImageVector = Icons.Rounded.PersonAddAlt1
     val Star: ImageVector = Icons.Rounded.Star
+    val Delete: ImageVector = Icons.Rounded.Delete
 }

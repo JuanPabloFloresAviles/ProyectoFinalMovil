@@ -39,13 +39,18 @@ private val AmarilloEstrella = Color(0xFFFFC845)
 
 @Composable
 fun ReviewsScreen(
+    movieId: String? = null,
     onVolverAPerfil: () -> Unit,
     onVerCartelera: () -> Unit,
+    onVolverADetalle: () -> Unit = onVerCartelera,
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
-    val myReviews = appState.reviews.filter { it.isMine }
-    val communityReviews = appState.reviews.filterNot { it.isMine }
+    val selectedMovie = movieId?.let { id -> appState.movies.find { it.id == id } }
+    val filteredReviews = movieId?.let { id -> appState.reviews.filter { it.movieId == id } } ?: appState.reviews
+    val myReviews = filteredReviews.filter { it.isMine }
+    val communityReviews = filteredReviews.filterNot { it.isMine }
+    val isMovieContext = selectedMovie != null
 
     Column(
         modifier = modifier
@@ -67,35 +72,65 @@ fun ReviewsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Opiniones de CineUABCS",
+                text = if (isMovieContext) "Reseñas de ${selectedMovie?.title}" else "Opiniones de CineUABCS",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = GrisTexto,
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Revisa tus comentarios y las reseñas recientes asociadas a películas.",
+                text = if (isMovieContext) {
+                    "Consulta lo que la comunidad ha dicho sobre esta película."
+                } else {
+                    "Revisa tus comentarios y las reseñas recientes asociadas a películas."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = GrisTexto.copy(alpha = 0.65f),
             )
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            SectionTitle("Mis reseñas")
-            if (myReviews.isEmpty()) {
-                EmptyReviewsCard()
+            if (isMovieContext) {
+                if (filteredReviews.isEmpty()) {
+                    EmptyReviewsCard(
+                        text = "Aún no hay reseñas para esta película.",
+                    )
+                } else {
+                    if (myReviews.isNotEmpty()) {
+                        SectionTitle("Tu reseña")
+                        myReviews.forEach { review ->
+                            ReviewCard(review = review)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+
+                    if (communityReviews.isNotEmpty()) {
+                        SectionTitle("Comunidad")
+                        communityReviews.forEach { review ->
+                            ReviewCard(review = review)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
             } else {
-                myReviews.forEach { review ->
+                SectionTitle("Mis reseñas")
+                if (myReviews.isEmpty()) {
+                    EmptyReviewsCard(
+                        text = "Aún no has escrito reseñas. Cuando califiques una película aparecerá aquí.",
+                    )
+                } else {
+                    myReviews.forEach { review ->
+                        ReviewCard(review = review)
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                SectionTitle("Comunidad")
+                communityReviews.forEach { review ->
                     ReviewCard(review = review)
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            SectionTitle("Comunidad")
-            communityReviews.forEach { review ->
-                ReviewCard(review = review)
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
 
@@ -109,12 +144,12 @@ fun ReviewsScreen(
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
                 UiPrimaryButton(
-                    text = "Volver a perfil",
-                    onClick = onVolverAPerfil,
+                    text = if (isMovieContext) "Volver al detalle" else "Volver a perfil",
+                    onClick = if (isMovieContext) onVolverADetalle else onVolverAPerfil,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 UiGhostButton(
-                    text = "Ver cartelera",
+                    text = if (isMovieContext) "Ir a cartelera" else "Ver cartelera",
                     onClick = onVerCartelera,
                 )
             }
@@ -205,7 +240,7 @@ private fun StarsRow(rating: Int) {
 }
 
 @Composable
-private fun EmptyReviewsCard() {
+private fun EmptyReviewsCard(text: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -213,7 +248,7 @@ private fun EmptyReviewsCard() {
         border = androidx.compose.foundation.BorderStroke(1.dp, BordeCard),
     ) {
         Text(
-            text = "Aún no has escrito reseñas. Cuando califiques una película aparecerá aquí.",
+            text = text,
             modifier = Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = GrisTexto.copy(alpha = 0.65f),
@@ -226,6 +261,8 @@ private fun EmptyReviewsCard() {
 private fun ReviewsScreenPreview() {
     ProyectoFinalMovilTheme {
         ReviewsScreen(
+            movieId = null,
+            onVolverADetalle = {},
             onVolverAPerfil = {},
             onVerCartelera = {},
         )
