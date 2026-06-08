@@ -711,7 +711,7 @@ class AppUiState {
             time = "18:00",
             room = "Sala 1",
             roomType = "Tradicional",
-            format = "2D · Dob.",
+            format = "Doblada",
             price = 55,
             availableSeats = 80,
         )

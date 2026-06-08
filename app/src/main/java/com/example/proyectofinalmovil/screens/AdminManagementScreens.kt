@@ -45,7 +45,9 @@ import com.example.proyectofinalmovil.services.mock.MockMovie
 import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.state.AdminConcessionCombo
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -1000,7 +1002,12 @@ private inline fun <T> Iterable<T>.anyIndexed(predicate: (Int, T) -> Boolean): B
 
 private fun startsAtDate(startsAt: String?): LocalDate? {
     if (startsAt.isNullOrBlank()) return null
-    return runCatching { LocalDate.parse(startsAt.take(10)) }.getOrNull()
+    // Si es un instante UTC del backend, lo llevamos al día de La Paz (UTC-7);
+    // si ya es una fecha "yyyy-MM-dd" del selector, la usamos tal cual.
+    return runCatching {
+        Instant.parse(startsAt).atOffset(ZoneOffset.ofHours(-7)).toLocalDate()
+    }.getOrNull()
+        ?: runCatching { LocalDate.parse(startsAt.take(10)) }.getOrNull()
 }
 
 private fun productNames(

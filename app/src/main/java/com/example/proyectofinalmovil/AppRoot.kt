@@ -78,6 +78,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Composable
 fun AppRoot() {
@@ -139,6 +141,22 @@ private fun AppNavHost(
     var adminSalesRange by remember { mutableStateOf(AdminSalesRange.LAST_7_DAYS) }
     var checkoutErrorMessage by remember { mutableStateOf<String?>(null) }
     var isProcessingCheckout by remember { mutableStateOf(false) }
+    var catalogErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun loadCatalog() {
+        catalogErrorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { catalogApi.getCatalog() }
+            }.onSuccess { snapshot ->
+                catalogErrorMessage = null
+                appState.replaceCatalog(snapshot)
+            }.onFailure {
+                catalogErrorMessage =
+                    "No se pudo cargar la cartelera. Revisa tu conexión e inténtalo de nuevo."
+            }
+        }
+    }
 
     fun refreshAdminMetrics(range: AdminSalesRange) {
         adminSalesRange = range
@@ -154,11 +172,7 @@ private fun AppNavHost(
     }
 
     LaunchedEffect(Unit) {
-        runCatching {
-            withContext(Dispatchers.IO) { catalogApi.getCatalog() }
-        }.onSuccess { snapshot ->
-            appState.replaceCatalog(snapshot)
-        }
+        loadCatalog()
     }
 
     NavHost(
@@ -249,6 +263,8 @@ private fun AppNavHost(
                 onVerTodo = {
                     navController.navigate(AppDestination.AllShowtimes.route)
                 },
+                errorMessage = catalogErrorMessage,
+                onRetry = { loadCatalog() },
             )
         }
         composable(AppDestination.AllShowtimes.route) {
@@ -1060,8 +1076,17 @@ private fun NavHostController.navigateToLogin() {
 
 private fun adminDateTimeFrom(time: String, existingStartsAt: String? = null): String {
     val safeTime = if (Regex("\\d{2}:\\d{2}").matches(time)) time else "18:00"
-    val datePrefix = existingStartsAt?.takeIf { it.length >= 10 }?.substring(0, 10) ?: LocalDate.now().toString()
-    return "${datePrefix}T${safeTime}:00.000Z"
+    val datePrefix = existingStartsAt?.takeIf { it.length >= 10 }?.substring(0, 10)
+        ?: LocalDate.now().toString()
+    // datePrefix + safeTime es hora de pared de La Paz (UTC-7); el backend
+    // almacena el instante en UTC, así que convertimos antes de enviar.
+    return runCatching {
+        LocalDateTime.parse("${datePrefix}T${safeTime}:00")
+            .toInstant(ZoneOffset.ofHours(-7))
+            .toString()
+    }.getOrElse {
+        "${datePrefix}T${safeTime}:00.000Z"
+    }
 }
 
 private fun apiErrorMessage(error: Throwable): String {

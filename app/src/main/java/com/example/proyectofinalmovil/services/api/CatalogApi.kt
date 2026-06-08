@@ -7,6 +7,8 @@ import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.state.AdminConcessionCombo
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 data class CatalogSnapshot(
@@ -183,7 +185,7 @@ class CatalogApi(
                     MockShowtime(
                         time = laPazTime(item.optString("fechaHora")),
                         room = item.optString("sala", "Sala"),
-                        roomType = item.optString("tipoSala", "Tradicional"),
+                        roomType = item.optString("tipoFuncion", item.optString("tipoSala", "Tradicional")),
                         format = normalizedLanguage(item.optString("formato", "Doblada")),
                         price = item.optInt("precioBase", 0),
                         availableSeats = item.optInt("butacasDisponibles", 0),
@@ -269,13 +271,23 @@ class CatalogApi(
 
 private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+/**
+ * Convierte el instante UTC que envía el backend (`fechaHora`, ISO-8601 con Z)
+ * a la hora de pared de La Paz/BCS (UTC-7, sin horario de verano). Sin esto la
+ * app mostraba la hora UTC cruda y las funciones se veían desfasadas 7 horas.
+ */
 private fun laPazTime(value: String?): String {
     if (value.isNullOrBlank()) return "18:00"
-    return value
-        .takeIf { it.length >= 16 }
-        ?.substring(11, 16)
-        ?: value.takeIf { it.length >= 5 }?.substring(0, 5)
-        ?: "18:00"
+    return runCatching {
+        Instant.parse(value)
+            .atOffset(ZoneOffset.ofHours(-7))
+            .format(timeFormatter)
+    }.getOrElse {
+        // Fallback para valores que no son un instante UTC válido.
+        value.takeIf { it.length >= 16 }?.substring(11, 16)
+            ?: value.takeIf { it.length >= 5 }?.substring(0, 5)
+            ?: "18:00"
+    }
 }
 
 private fun normalizedLanguage(value: String): String {
