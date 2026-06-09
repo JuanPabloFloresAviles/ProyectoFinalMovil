@@ -180,6 +180,17 @@ class MobileStateApi(
         }
     }
 
+    fun recuperarCompra(folio: String, email: String): MockPurchase? {
+        return try {
+            val folioEnc = java.net.URLEncoder.encode(folio.trim(), "UTF-8")
+            val emailEnc = java.net.URLEncoder.encode(email.trim(), "UTF-8")
+            val json = JSONObject(client.get("mobile/compras/$folioEnc?email=$emailEnc"))
+            parseCheckoutPurchase(json)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun separarBoletos(
         token: String,
         folio: String,
