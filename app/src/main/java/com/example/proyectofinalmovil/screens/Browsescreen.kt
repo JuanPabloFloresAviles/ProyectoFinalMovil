@@ -58,7 +58,9 @@ import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
@@ -69,6 +71,8 @@ fun BrowseScreen(
     onMovieClick: (String) -> Unit,
     onVerTodo: () -> Unit,
     modifier: Modifier = Modifier,
+    errorMessage: String? = null,
+    onRetry: () -> Unit = {},
 ) {
     val appState = LocalAppUiState.current
     if (appState.movies.isEmpty()) {
@@ -78,7 +82,35 @@ fun BrowseScreen(
                 .padding(24.dp),
             contentAlignment = Alignment.Center,
         ) {
-            UiLoader(text = "Cargando cartelera desde la base de datos...")
+            if (errorMessage != null) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    Button(
+                        onClick = onRetry,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CinemaBlue,
+                            contentColor = Color.White,
+                        ),
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Text(
+                            text = "Reintentar",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            } else {
+                UiLoader(text = "Cargando cartelera desde la base de datos...")
+            }
         }
         return
     }
@@ -542,7 +574,14 @@ private fun dateLabelForOffset(dayOffset: Int): String {
 
 private fun laPazDateKey(value: String?): String? {
     if (value.isNullOrBlank()) return null
-    return value.takeIf { it.length >= 10 }?.substring(0, 10)
+    return runCatching {
+        Instant.parse(value)
+            .atOffset(ZoneOffset.ofHours(-7))
+            .toLocalDate()
+            .toString()
+    }.getOrElse {
+        value.takeIf { it.length >= 10 }?.substring(0, 10)
+    }
 }
 
 @Composable

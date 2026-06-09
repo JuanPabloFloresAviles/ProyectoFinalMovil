@@ -43,6 +43,8 @@ import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Locale
 
@@ -58,7 +60,7 @@ private fun generarDias(): List<Pair<String, String>> {
     return dias
 }
 
-private val formatosFiltro = listOf("Todo", "2D", "IMAX", "Subtitulada", "Doblada")
+private val formatosFiltro = listOf("Todo", "Tradicional", "3D", "4D", "Subtitulada", "Doblada")
 
 @Composable
 fun ShowtimesScreen(
@@ -84,8 +86,9 @@ fun ShowtimesScreen(
 
         when (formatoActivo) {
             "Todo" -> funcionesDelDia
-            "2D" -> funcionesDelDia.filter { it.format.contains("2D") }
-            "IMAX" -> funcionesDelDia.filter { it.format.contains("IMAX") }
+            "Tradicional" -> funcionesDelDia.filter { it.roomType.equals("Tradicional", ignoreCase = true) }
+            "3D" -> funcionesDelDia.filter { it.roomType.contains("3D", ignoreCase = true) }
+            "4D" -> funcionesDelDia.filter { it.roomType.contains("4D", ignoreCase = true) }
             "Subtitulada" -> funcionesDelDia.filter { it.format.contains("Subt", ignoreCase = true) }
             "Doblada" -> funcionesDelDia.filter { it.format.contains("Dob", ignoreCase = true) }
             else -> funcionesDelDia
@@ -391,7 +394,14 @@ private fun dateKeyForOffset(dayOffset: Int): String {
 
 private fun laPazDateKey(startsAt: String?): String? {
     if (startsAt.isNullOrBlank()) return null
-    return startsAt.takeIf { it.length >= 10 }?.substring(0, 10)
+    return runCatching {
+        Instant.parse(startsAt)
+            .atOffset(ZoneOffset.ofHours(-7))
+            .toLocalDate()
+            .toString()
+    }.getOrElse {
+        startsAt.takeIf { it.length >= 10 }?.substring(0, 10)
+    }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFFFFF6EA)
