@@ -35,8 +35,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.proyectofinalmovil.components.CardNumberVisualTransformation
+import com.example.proyectofinalmovil.components.ExpiryVisualTransformation
+import com.example.proyectofinalmovil.components.expiryError
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
+import com.example.proyectofinalmovil.components.formatExpiry
 import com.example.proyectofinalmovil.services.mock.MockConcessionItem
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
@@ -263,7 +267,8 @@ fun SummaryScreen(
                             newCardNumber = value.filter { it.isDigit() }.take(16)
                         },
                         label = "Número de tarjeta",
-                        placeholder = "4242424242424242",
+                        placeholder = "4242 4242 4242 4242",
+                        visualTransformation = CardNumberVisualTransformation,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -274,19 +279,26 @@ fun SummaryScreen(
                         placeholder = "Nombre como aparece en la tarjeta",
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    val expiryErrorMsg = expiryError(newCardExpiry)
                     UiInput(
                         value = newCardExpiry,
                         onValueChange = { value ->
-                            val digits = value.filter { it.isDigit() }.take(4)
-                            newCardExpiry = when {
-                                digits.length <= 2 -> digits
-                                else -> "${digits.take(2)}/${digits.drop(2)}"
-                            }
+                            newCardExpiry = value.filter { it.isDigit() }.take(4)
                         },
                         label = "Vencimiento",
                         placeholder = "09/29",
+                        visualTransformation = ExpiryVisualTransformation,
+                        isError = expiryErrorMsg != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
+                    if (expiryErrorMsg != null) {
+                        Text(
+                            text = expiryErrorMsg,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         UiPrimaryButton(
@@ -295,7 +307,7 @@ fun SummaryScreen(
                                 appState.addPaymentMethod(
                                     last4 = newCardNumber,
                                     holderName = newCardHolder,
-                                    expiry = newCardExpiry,
+                                    expiry = formatExpiry(newCardExpiry),
                                 )
                                 showingPaymentForm = false
                                 newCardNumber = ""
@@ -304,7 +316,8 @@ fun SummaryScreen(
                             },
                             enabled = newCardNumber.length >= 4 &&
                                 newCardHolder.isNotBlank() &&
-                                newCardExpiry.length == 5,
+                                newCardExpiry.length == 4 &&
+                                expiryErrorMsg == null,
                             fillWidth = false,
                             modifier = Modifier.weight(1f),
                         )
@@ -377,12 +390,6 @@ fun SummaryScreen(
                         label = "CVV",
                         placeholder = "123",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    )
-                    Text(
-                        text = "Por seguridad, tu CVV se valida pero no se almacena.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = GrisTexto.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(top = 4.dp),
                     )
                 }
             }

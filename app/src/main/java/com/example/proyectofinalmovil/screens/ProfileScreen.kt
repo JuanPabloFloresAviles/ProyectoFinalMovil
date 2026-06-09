@@ -51,9 +51,7 @@ private val RojoCerrarSesion = Color(0xFFB42318)
 
 @Composable
 fun ProfileScreen(
-    onVerHistorial: () -> Unit,
     onVerResenas: () -> Unit,
-    onRecuperarCompra: () -> Unit,
     onAdministrarPagos: () -> Unit,
     onCerrarSesion: () -> Unit,
     onIniciarSesion: () -> Unit,
@@ -184,18 +182,8 @@ fun ProfileScreen(
             )
             Spacer(modifier = Modifier.height(10.dp))
             UiGhostButton(
-                text = "Ver historial de compras",
-                onClick = onVerHistorial,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            UiGhostButton(
                 text = "Métodos de pago",
                 onClick = onAdministrarPagos,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            UiGhostButton(
-                text = "Recuperar compra invitada",
-                onClick = onRecuperarCompra,
             )
             Spacer(modifier = Modifier.height(10.dp))
             DangerOutlineButton(
@@ -389,9 +377,7 @@ private fun ProfileInfoRow(
 private fun ProfileScreenPreview() {
     ProyectoFinalMovilTheme {
         ProfileScreen(
-            onVerHistorial = {},
             onVerResenas = {},
-            onRecuperarCompra = {},
             onAdministrarPagos = {},
             onCerrarSesion = {},
             onIniciarSesion = {},

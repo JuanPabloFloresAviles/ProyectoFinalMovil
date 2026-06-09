@@ -536,14 +536,8 @@ private fun AppNavHost(
         }
         composable(AppDestination.Profile.route) {
             ProfileScreen(
-                onVerHistorial = {
-                    navController.navigate(AppDestination.History.route)
-                },
                 onVerResenas = {
                     navController.navigate(AppDestination.Reviews.route)
-                },
-                onRecuperarCompra = {
-                    navController.navigate(AppDestination.RecoverPurchase.route)
                 },
                 onAdministrarPagos = {
                     navController.navigate(AppDestination.PaymentMethods.route)
