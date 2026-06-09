@@ -250,8 +250,41 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Signup.route) {
+            var isLoading by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+
             SignupScreen(
-                onCrearCuenta = { navController.navigate(AppDestination.Browse.route) },
+                onCrearCuenta = { nombre, apellidoPaterno, apellidoMaterno, correo, contrasena ->
+                    isLoading = true
+                    errorMessage = null
+                    coroutineScope.launch {
+                        try {
+                            val session = withContext(Dispatchers.IO) {
+                                authApi.registrar(nombre, apellidoPaterno, apellidoMaterno, correo, contrasena)
+                            }
+                            appState.signIn(session)
+                            runCatching {
+                                withContext(Dispatchers.IO) { mobileStateApi.getUserState(session.token) }
+                            }.onSuccess { snapshot ->
+                                appState.replaceUserState(snapshot)
+                            }
+                            runCatching {
+                                withContext(Dispatchers.IO) { mobileStateApi.listPaymentMethods(session.token) }
+                            }.onSuccess { metodos ->
+                                appState.replacePaymentMethods(metodos)
+                            }
+                            navController.navigate(AppDestination.Browse.route)
+                        } catch (error: AuthException) {
+                            errorMessage = error.message
+                        } catch (_: Exception) {
+                            errorMessage = "No se pudo conectar con el servidor. Intenta nuevamente."
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                },
+                cargando = isLoading,
+                mensajeError = errorMessage,
             )
         }
         composable(AppDestination.Browse.route) {

@@ -45,6 +45,37 @@ class AuthApi(
             expiration = response.getString("expiracion"),
         )
     }
+
+    fun registrar(
+        nombre: String,
+        apellidoPaterno: String,
+        apellidoMaterno: String?,
+        correo: String,
+        contrasena: String,
+    ): AuthSession {
+        val cuerpo = JSONObject()
+            .put("nombre", nombre.trim())
+            .put("apellidoPaterno", apellidoPaterno.trim())
+            .put("correo", correo.trim())
+            .put("password", contrasena)
+        if (!apellidoMaterno.isNullOrBlank()) {
+            cuerpo.put("apellidoMaterno", apellidoMaterno.trim())
+        }
+
+        try {
+            client.postJson(
+                path = "api/auth/register",
+                jsonBody = cuerpo.toString(),
+            )
+        } catch (error: ApiException) {
+            val mensaje = runCatching {
+                JSONObject(error.responseBody).getString("error")
+            }.getOrDefault("No se pudo crear la cuenta")
+            throw AuthException(mensaje)
+        }
+
+        return login(correo, contrasena)
+    }
 }
 
 class AuthException(message: String) : IllegalStateException(message)
