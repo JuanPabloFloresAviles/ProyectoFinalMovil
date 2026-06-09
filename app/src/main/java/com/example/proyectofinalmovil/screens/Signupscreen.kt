@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,24 +39,23 @@ import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
 import com.example.proyectofinalmovil.ui.theme.CinemaBlue
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
-import java.util.Calendar
 
 @Composable
 fun SignupScreen(
-    onCrearCuenta: () -> Unit,
+    onCrearCuenta: (nombre: String, apellidoPaterno: String, apellidoMaterno: String?, correo: String, contrasena: String) -> Unit,
+    cargando: Boolean = false,
+    mensajeError: String? = null,
     modifier: Modifier = Modifier,
 ) {
     var nombre by remember { mutableStateOf("") }
+    var apellidoPaterno by remember { mutableStateOf("") }
+    var apellidoMaterno by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
-    var fechaNacimiento by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var aceptaTerminos by remember { mutableStateOf(false) }
 
     val correoValido = android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
     val mostrarErrorCorreo = correo.isNotEmpty() && !correoValido
-
-    val fechaValida = validarFecha(fechaNacimiento)
-    val mostrarErrorFecha = fechaNacimiento.isNotEmpty() && !fechaValida
 
     val fuerzaContrasena = calcularFuerza(contrasena)
     val textoFuerza = when {
@@ -65,11 +65,12 @@ fun SignupScreen(
         else -> "Fuerte"
     }
 
-    val formularioListo = nombre.isNotBlank()
+    val formularioListo = nombre.trim().length >= 2
+        && apellidoPaterno.trim().length >= 2
         && correoValido
-        && fechaValida
         && contrasena.length >= 6
         && aceptaTerminos
+        && !cargando
 
     Column(
         modifier = modifier
@@ -111,8 +112,28 @@ fun SignupScreen(
         UiInput(
             value = nombre,
             onValueChange = { nombre = it },
-            label = "NOMBRE COMPLETO",
-            placeholder = "Alejandra Rivera Soto",
+            label = "NOMBRE(S)",
+            placeholder = "Alejandra",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        UiInput(
+            value = apellidoPaterno,
+            onValueChange = { apellidoPaterno = it },
+            label = "APELLIDO PATERNO",
+            placeholder = "Rivera",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        UiInput(
+            value = apellidoMaterno,
+            onValueChange = { apellidoMaterno = it },
+            label = "APELLIDO MATERNO (opcional)",
+            placeholder = "Soto",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
         )
 
@@ -131,40 +152,6 @@ fun SignupScreen(
         if (mostrarErrorCorreo) {
             Text(
                 text = "Ingresa un correo válido, por ejemplo: nombre@dominio.com",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp, start = 4.dp),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        UiInput(
-            value = fechaNacimiento,
-            onValueChange = { entrada ->
-                val soloDigitos = entrada.filter { it.isDigit() }.take(8)
-                fechaNacimiento = when {
-                    soloDigitos.length > 4 -> "${soloDigitos.substring(0, 2)}/${soloDigitos.substring(2, 4)}/${soloDigitos.substring(4)}"
-                    soloDigitos.length > 2 -> "${soloDigitos.substring(0, 2)}/${soloDigitos.substring(2)}"
-                    else -> soloDigitos
-                }
-            },
-            label = "FECHA DE NACIMIENTO",
-            placeholder = "14 / 03 / 2003",
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            isError = mostrarErrorFecha,
-        )
-
-        if (mostrarErrorFecha) {
-            val mensajeFecha = when {
-                fechaNacimiento.length == 10 && !esMayorDe13(fechaNacimiento) ->
-                    "Debes tener al menos 13 años para crear una cuenta"
-                fechaNacimiento.length == 10 ->
-                    "La fecha no existe. Verifica día, mes y año"
-                else -> "Formato: DD/MM/AAAA"
-            }
-            Text(
-                text = mensajeFecha,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 4.dp, start = 4.dp),
@@ -236,56 +223,39 @@ fun SignupScreen(
             )
         }
 
+        if (mensajeError != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = mensajeError,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+            )
+        }
+
         Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.height(24.dp))
 
-        UiPrimaryButton(
-            text = "Crear cuenta",
-            onClick = onCrearCuenta,
-            enabled = formularioListo,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-private fun validarFecha(fecha: String): Boolean {
-    if (fecha.length != 10) return false
-    return try {
-        val partes = fecha.split("/")
-        val dia = partes[0].toInt()
-        val mes = partes[1].toInt()
-        val anio = partes[2].toInt()
-
-        // Verificación básica de rangos
-        if (mes < 1 || mes > 12) return false
-        if (dia < 1 || dia > 31) return false
-        if (anio < 1900 || anio > Calendar.getInstance().get(Calendar.YEAR)) return false
-
-        val cal = Calendar.getInstance()
-        cal.isLenient = false
-        cal.set(anio, mes - 1, dia)
-        cal.time
-        esMayorDe13(fecha)
-    } catch (e: Exception) {
-        false
-    }
-}
-
-private fun esMayorDe13(fecha: String): Boolean {
-    return try {
-        val partes = fecha.split("/")
-        val dia = partes[0].toInt()
-        val mes = partes[1].toInt()
-        val anio = partes[2].toInt()
-
-        val nacimiento = Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-        val hoy = Calendar.getInstance()
-        val edad = hoy.get(Calendar.YEAR) - nacimiento.get(Calendar.YEAR)
-        val cumpleEsteAnio = hoy.get(Calendar.DAY_OF_YEAR) >= nacimiento.get(Calendar.DAY_OF_YEAR)
-
-        if (cumpleEsteAnio) edad >= 13 else edad - 1 >= 13
-    } catch (e: Exception) {
-        false
+        if (cargando) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        } else {
+            UiPrimaryButton(
+                text = "Crear cuenta",
+                onClick = {
+                    onCrearCuenta(
+                        nombre.trim(),
+                        apellidoPaterno.trim(),
+                        apellidoMaterno.trim().ifBlank { null },
+                        correo.trim(),
+                        contrasena,
+                    )
+                },
+                enabled = formularioListo,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
@@ -310,6 +280,6 @@ private fun colorFuerza(fuerza: Float): Color {
 @Composable
 private fun SignupScreenPreview() {
     ProyectoFinalMovilTheme {
-        SignupScreen(onCrearCuenta = {})
+        SignupScreen(onCrearCuenta = { _, _, _, _, _ -> })
     }
 }
