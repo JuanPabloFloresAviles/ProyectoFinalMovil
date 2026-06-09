@@ -188,7 +188,9 @@ class AppUiState {
         userProfile = snapshot.profile
         socialUsers.clear()
         socialUsers.addAll(snapshot.socialUsers)
+        val comprasInvitado = purchases.filter { it.guestPurchase }
         purchases.clear()
+        purchases.addAll(comprasInvitado)
         purchases.addAll(snapshot.purchases)
         reviews.clear()
         reviews.addAll(snapshot.reviews)
@@ -497,6 +499,11 @@ class AppUiState {
         activePurchaseFolio = purchase.folio
         reserveSeatsForCurrentShowtime(purchase.seats.size)
         clearCheckoutDraft()
+    }
+
+    fun cargarComprasLocales(compras: List<MockPurchase>) {
+        val foliosExistentes = purchases.map { it.folio }.toSet()
+        compras.filter { it.folio !in foliosExistentes }.forEach { purchases.add(it) }
     }
 
     /** Butacas de una compra que todavía no se han separado en un QR aparte. */
