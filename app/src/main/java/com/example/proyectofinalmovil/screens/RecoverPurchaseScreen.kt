@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -17,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,13 +29,9 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
-import com.example.proyectofinalmovil.services.api.MobileStateApi
 import com.example.proyectofinalmovil.services.mock.MockPurchase
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private val FondoCrema = Color(0xFFF9F6EB)
 private val AzulAccion = Color(0xFF1067A6)
@@ -48,41 +44,14 @@ private val RojoSuave = Color(0xFFFFE9E5)
 fun RecoverPurchaseScreen(
     onVerBoleto: (String) -> Unit,
     onIrAlHistorial: () -> Unit,
+    compraEncontrada: MockPurchase? = null,
+    buscando: Boolean = false,
+    busquedaRealizada: Boolean = false,
+    onBuscarCompra: (folio: String, email: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
-    val appState = LocalAppUiState.current
-    val coroutineScope = rememberCoroutineScope()
-    val mobileStateApi = remember { MobileStateApi() }
     var folio by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var searchDone by remember { mutableStateOf(false) }
-    var isSearching by remember { mutableStateOf(false) }
-    var recoveredPurchase by remember { mutableStateOf<MockPurchase?>(null) }
-
-    fun buscarCompra() {
-        // 1) Búsqueda local inmediata (compra ya cargada en este dispositivo).
-        val local = appState.recoverPurchase(folio, email)
-        if (local != null) {
-            recoveredPurchase = local
-            searchDone = true
-            return
-        }
-        // 2) Consulta al backend: recupera compras de invitado guardadas en la BD,
-        //    aunque se hayan hecho en otro dispositivo o tras limpiar la app.
-        isSearching = true
-        searchDone = false
-        coroutineScope.launch {
-            val remoto = runCatching {
-                withContext(Dispatchers.IO) { mobileStateApi.recuperarCompra(folio, email) }
-            }.getOrNull()
-            if (remoto != null) {
-                appState.cargarComprasLocales(listOf(remoto))
-            }
-            recoveredPurchase = remoto
-            isSearching = false
-            searchDone = true
-        }
-    }
 
     Column(
         modifier = modifier
@@ -127,44 +96,36 @@ fun RecoverPurchaseScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     UiInput(
                         value = folio,
-                        onValueChange = {
-                            folio = it
-                            searchDone = false
-                            recoveredPurchase = null
-                        },
+                        onValueChange = { folio = it },
                         label = "Folio",
                         placeholder = "CU-",
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     UiInput(
                         value = email,
-                        onValueChange = {
-                            email = it
-                            searchDone = false
-                            recoveredPurchase = null
-                        },
+                        onValueChange = { email = it },
                         label = "Correo",
                         placeholder = "correo@correo.com",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                     UiPrimaryButton(
-                        text = if (isSearching) "Buscando..." else "Buscar compra",
-                        onClick = { buscarCompra() },
-                        enabled = folio.isNotBlank() && email.isNotBlank() && !isSearching,
+                        text = if (buscando) "Buscando..." else "Buscar compra",
+                        onClick = { onBuscarCompra(folio, email) },
+                        enabled = folio.isNotBlank() && email.isNotBlank() && !buscando,
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val purchase = recoveredPurchase
             when {
-                purchase != null -> RecoveredPurchaseCard(
-                    purchase = purchase,
-                    onVerBoleto = { onVerBoleto(purchase.folio) },
+                buscando -> CircularProgressIndicator()
+                compraEncontrada != null -> RecoveredPurchaseCard(
+                    purchase = compraEncontrada,
+                    onVerBoleto = { onVerBoleto(compraEncontrada.folio) },
                 )
-                searchDone -> SearchMessage(
+                busquedaRealizada -> SearchMessage(
                     title = "No encontramos esa compra",
                     body = "Revisa que el folio y el correo estén escritos igual que en tu confirmación.",
                     background = RojoSuave,
@@ -295,6 +256,7 @@ private fun RecoverPurchaseScreenPreview() {
         RecoverPurchaseScreen(
             onVerBoleto = {},
             onIrAlHistorial = {},
+            onBuscarCompra = { _, _ -> },
         )
     }
 }

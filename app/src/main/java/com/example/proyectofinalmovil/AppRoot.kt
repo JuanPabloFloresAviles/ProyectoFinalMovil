@@ -444,10 +444,15 @@ private fun AppNavHost(
                                 )
                             }
                         }.onSuccess { purchase ->
-                            appState.registerCompletedPurchase(purchase)
+                            val compraFinal = purchase.copy(
+                                email = purchase.email.ifBlank { payload.correoComprador },
+                                status = purchase.status.ifBlank { "Activa" },
+                                guestPurchase = purchase.guestPurchase || payload.esInvitado,
+                            )
+                            appState.registerCompletedPurchase(compraFinal)
                             if (payload.esInvitado) {
                                 runCatching {
-                                    withContext(Dispatchers.IO) { guardarCompraInvitadoLocal(contexto, purchase) }
+                                    withContext(Dispatchers.IO) { guardarCompraInvitadoLocal(contexto, compraFinal) }
                                 }
                             }
                             runCatching {
@@ -462,7 +467,7 @@ private fun AppNavHost(
                                     }
                                 }.onSuccess { snapshot ->
                                     appState.replaceUserState(snapshot)
-                                    appState.activePurchaseFolio = purchase.folio
+                                    appState.activePurchaseFolio = compraFinal.folio
                                 }
                             }
                             navController.navigate(AppDestination.Confirmation.route)
@@ -579,7 +584,39 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.RecoverPurchase.route) {
+            var compraEncontrada by remember { mutableStateOf<MockPurchase?>(null) }
+            var buscando by remember { mutableStateOf(false) }
+            var busquedaRealizada by remember { mutableStateOf(false) }
             RecoverPurchaseScreen(
+                compraEncontrada = compraEncontrada,
+                buscando = buscando,
+                busquedaRealizada = busquedaRealizada,
+                onBuscarCompra = { folio, email ->
+                    buscando = true
+                    busquedaRealizada = false
+                    compraEncontrada = null
+                    coroutineScope.launch {
+                        var encontrada = appState.recoverPurchase(folio, email)
+                        if (encontrada == null) {
+                            encontrada = withContext(Dispatchers.IO) {
+                                mobileStateApi.recuperarCompra(folio, email)
+                            }
+                            if (encontrada != null) {
+                                val compraFinal = encontrada.copy(
+                                    email = encontrada.email.ifBlank { email },
+                                    status = encontrada.status.ifBlank { "Activa" },
+                                    guestPurchase = true,
+                                )
+                                appState.cargarComprasLocales(listOf(compraFinal))
+                                guardarCompraInvitadoLocal(contexto, compraFinal)
+                                encontrada = compraFinal
+                            }
+                        }
+                        compraEncontrada = encontrada
+                        buscando = false
+                        busquedaRealizada = true
+                    }
+                },
                 onVerBoleto = { folio ->
                     appState.activePurchaseFolio = folio
                     navController.navigate(AppDestination.TicketQr.route)
