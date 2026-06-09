@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,20 +44,14 @@ private val RojoSuave = Color(0xFFFFE9E5)
 fun RecoverPurchaseScreen(
     onVerBoleto: (String) -> Unit,
     onIrAlHistorial: () -> Unit,
+    compraEncontrada: MockPurchase? = null,
+    buscando: Boolean = false,
+    busquedaRealizada: Boolean = false,
+    onBuscarCompra: (folio: String, email: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
-    val appState = LocalAppUiState.current
-    var folio by remember { mutableStateOf("CINE-2026-4A7F") }
-    var email by remember { mutableStateOf("invitado@cineuabcs.mx") }
-    var searchDone by remember { mutableStateOf(false) }
-
-    val recoveredPurchase = remember(folio, email, searchDone) {
-        if (!searchDone) {
-            null
-        } else {
-            appState.recoverPurchase(folio, email)
-        }
-    }
+    var folio by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -101,29 +96,23 @@ fun RecoverPurchaseScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     UiInput(
                         value = folio,
-                        onValueChange = {
-                            folio = it
-                            searchDone = false
-                        },
+                        onValueChange = { folio = it },
                         label = "Folio",
                         placeholder = "CINE-2026-4A7F",
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     UiInput(
                         value = email,
-                        onValueChange = {
-                            email = it
-                            searchDone = false
-                        },
+                        onValueChange = { email = it },
                         label = "Correo",
                         placeholder = "correo@ejemplo.com",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                     UiPrimaryButton(
-                        text = "Buscar compra",
-                        onClick = { searchDone = true },
-                        enabled = folio.isNotBlank() && email.isNotBlank(),
+                        text = if (buscando) "Buscando..." else "Buscar compra",
+                        onClick = { onBuscarCompra(folio, email) },
+                        enabled = folio.isNotBlank() && email.isNotBlank() && !buscando,
                     )
                 }
             }
@@ -131,18 +120,19 @@ fun RecoverPurchaseScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             when {
-                recoveredPurchase != null -> RecoveredPurchaseCard(
-                    purchase = recoveredPurchase,
-                    onVerBoleto = { onVerBoleto(recoveredPurchase.folio) },
+                buscando -> CircularProgressIndicator()
+                compraEncontrada != null -> RecoveredPurchaseCard(
+                    purchase = compraEncontrada,
+                    onVerBoleto = { onVerBoleto(compraEncontrada.folio) },
                 )
-                searchDone -> SearchMessage(
+                busquedaRealizada -> SearchMessage(
                     title = "No encontramos esa compra",
                     body = "Revisa que el folio y el correo estén escritos igual que en tu confirmación.",
                     background = RojoSuave,
                 )
                 else -> SearchMessage(
-                    title = "Dato de prueba",
-                    body = "Puedes buscar CINE-2026-4A7F con invitado@cineuabcs.mx para simular una recuperación.",
+                    title = "Ingresa tu folio y correo",
+                    body = "Escribe el folio y correo usados al comprar como invitado y presiona Buscar.",
                     background = VerdeSuave,
                 )
             }
@@ -266,6 +256,7 @@ private fun RecoverPurchaseScreenPreview() {
         RecoverPurchaseScreen(
             onVerBoleto = {},
             onIrAlHistorial = {},
+            onBuscarCompra = { _, _ -> },
         )
     }
 }
