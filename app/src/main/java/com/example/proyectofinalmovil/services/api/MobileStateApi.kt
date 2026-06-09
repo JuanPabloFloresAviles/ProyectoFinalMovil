@@ -117,6 +117,52 @@ class MobileStateApi(
         return parsePaymentMethods(json.optJSONArray("metodos") ?: JSONArray())
     }
 
+    fun enviarSolicitudAmistad(token: String, receptorUsuarioId: String) {
+        val body = JSONObject()
+            .put("accion", "solicitar")
+            .put("receptorUsuarioId", receptorUsuarioId.toIntOrNull() ?: receptorUsuarioId)
+        client.postJson("mobile/social", body.toString(), token)
+    }
+
+    fun responderSolicitudAmistad(token: String, emisorUsuarioId: String, aceptar: Boolean) {
+        val body = JSONObject()
+            .put("accion", if (aceptar) "aceptar" else "rechazar")
+            .put("emisorUsuarioId", emisorUsuarioId.toIntOrNull() ?: emisorUsuarioId)
+        client.postJson("mobile/social", body.toString(), token)
+    }
+
+    fun cancelarSolicitudAmistad(token: String, receptorUsuarioId: String) {
+        val body = JSONObject()
+            .put("accion", "cancelar")
+            .put("receptorUsuarioId", receptorUsuarioId.toIntOrNull() ?: receptorUsuarioId)
+        client.postJson("mobile/social", body.toString(), token)
+    }
+
+    fun enviarMensaje(token: String, amigoId: String, contenido: String) {
+        val body = JSONObject()
+            .put("accion", "mensaje")
+            .put("amigoId", amigoId.toIntOrNull() ?: amigoId)
+            .put("contenido", contenido)
+        client.postJson("mobile/social", body.toString(), token)
+    }
+
+    fun crearResena(token: String, peliculaId: String, puntuacion: Int, comentario: String) {
+        val body = JSONObject()
+            .put("puntuacion", puntuacion)
+            .put("comentario", comentario)
+        val id = peliculaId.toIntOrNull() ?: peliculaId
+        client.postJson("mobile/peliculas/$id/resenas", body.toString(), token)
+    }
+
+    fun enviarRecomendacion(token: String, receptorUsuarioId: String, peliculaId: String, comentario: String) {
+        val body = JSONObject()
+            .put("accion", "recomendar")
+            .put("receptorUsuarioId", receptorUsuarioId.toIntOrNull() ?: receptorUsuarioId)
+            .put("peliculaId", peliculaId.toIntOrNull() ?: peliculaId)
+            .put("comentario", comentario)
+        client.postJson("mobile/social", body.toString(), token)
+    }
+
     private fun parsePaymentMethods(json: JSONArray): List<MockPaymentMethod> {
         return buildList {
             for (index in 0 until json.length()) {
@@ -266,6 +312,7 @@ class MobileStateApi(
                         text = item.optString("text", ""),
                         time = item.optString("time", ""),
                         isMine = item.optBoolean("isMine", false),
+                        sortKey = item.optLong("createdAt", 0),
                     ),
                 )
             }

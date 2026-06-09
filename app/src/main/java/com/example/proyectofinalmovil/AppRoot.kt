@@ -42,6 +42,7 @@ import com.example.proyectofinalmovil.screens.RecoverPurchaseScreen
 import com.example.proyectofinalmovil.screens.PaymentMethodsScreen
 import com.example.proyectofinalmovil.screens.ProfileScreen
 import com.example.proyectofinalmovil.screens.ReviewsScreen
+import com.example.proyectofinalmovil.screens.NuevaResenaScreen
 import com.example.proyectofinalmovil.screens.SocialHubScreen
 import com.example.proyectofinalmovil.screens.RequestsScreen
 import com.example.proyectofinalmovil.screens.FriendsScreen
@@ -75,6 +76,7 @@ import com.example.proyectofinalmovil.services.api.MobileCheckoutConcessionItem
 import com.example.proyectofinalmovil.services.api.MobileCheckoutPayload
 import com.example.proyectofinalmovil.services.api.TmdbApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -167,6 +169,35 @@ private fun AppNavHost(
                 }
             }.onSuccess { metrics ->
                 appState.replaceAdminMetrics(metrics)
+            }
+        }
+    }
+
+    fun refreshUserState() {
+        if (appState.authToken.isBlank()) return
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    mobileStateApi.getUserState(appState.authToken)
+                }
+            }.onSuccess { snapshot ->
+                appState.replaceUserState(snapshot)
+            }
+        }
+    }
+
+    fun runSocialAction(action: suspend () -> Unit) {
+        if (appState.authToken.isBlank()) return
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { action() }
+            }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    mobileStateApi.getUserState(appState.authToken)
+                }
+            }.onSuccess { snapshot ->
+                appState.replaceUserState(snapshot)
             }
         }
     }
@@ -532,6 +563,52 @@ private fun AppNavHost(
                 onVerCartelera = {
                     navController.navigate(AppDestination.Browse.route)
                 },
+                onEscribirResena = {
+                    navController.navigate(AppDestination.NuevaResena.route)
+                },
+            )
+        }
+        composable(AppDestination.NuevaResena.route) {
+            var isSubmitting by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+            NuevaResenaScreen(
+                movieId = appState.selectedMovieId,
+                isSubmitting = isSubmitting,
+                errorMessage = errorMessage,
+                onCancelar = { navController.popBackStack() },
+                onEnviar = { rating, comentario ->
+                    val movieId = appState.selectedMovieId
+                    if (movieId.isBlank() || appState.authToken.isBlank()) {
+                        errorMessage = "Inicia sesión para publicar tu reseña."
+                        return@NuevaResenaScreen
+                    }
+                    isSubmitting = true
+                    errorMessage = null
+                    coroutineScope.launch {
+                        val result = runCatching {
+                            withContext(Dispatchers.IO) {
+                                mobileStateApi.crearResena(appState.authToken, movieId, rating, comentario)
+                            }
+                        }
+                        result.onSuccess {
+                            appState.upsertMyReview(movieId, rating, comentario)
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    mobileStateApi.getUserState(appState.authToken)
+                                }
+                            }.onSuccess { snapshot -> appState.replaceUserState(snapshot) }
+                            // Recargar el catálogo para reflejar el nuevo promedio en cartelera.
+                            runCatching {
+                                withContext(Dispatchers.IO) { catalogApi.getCatalog() }
+                            }.onSuccess { snapshot -> appState.replaceCatalog(snapshot) }
+                            isSubmitting = false
+                            navController.popBackStack()
+                        }.onFailure { error ->
+                            isSubmitting = false
+                            errorMessage = apiErrorMessage(error)
+                        }
+                    }
+                },
             )
         }
         composable(AppDestination.Profile.route) {
@@ -606,6 +683,7 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.SocialHub.route) {
+            LaunchedEffect(Unit) { refreshUserState() }
             SocialHubScreen(
                 friends = appState.friendUsers(),
                 messages = appState.chatMessages,
@@ -636,18 +714,22 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.Requests.route) {
+            LaunchedEffect(Unit) { refreshUserState() }
             RequestsScreen(
                 users = appState.socialUsers,
                 incomingRequestIds = appState.incomingRequestIds,
                 outgoingRequestIds = appState.outgoingRequestIds,
                 onAccept = { userId ->
                     appState.acceptFriend(userId)
+                    runSocialAction { mobileStateApi.responderSolicitudAmistad(appState.authToken, userId, aceptar = true) }
                 },
                 onReject = { userId ->
                     appState.rejectFriend(userId)
+                    runSocialAction { mobileStateApi.responderSolicitudAmistad(appState.authToken, userId, aceptar = false) }
                 },
                 onCancel = { userId ->
                     appState.cancelFriendRequest(userId)
+                    runSocialAction { mobileStateApi.cancelarSolicitudAmistad(appState.authToken, userId) }
                 },
                 onVerAmigos = {
                     navController.navigate(AppDestination.Friends.route)
@@ -684,9 +766,11 @@ private fun AppNavHost(
                 outgoingRequestIds = appState.outgoingRequestIds,
                 onAdd = { userId ->
                     appState.addFriendRequest(userId)
+                    runSocialAction { mobileStateApi.enviarSolicitudAmistad(appState.authToken, userId) }
                 },
                 onCancel = { userId ->
                     appState.cancelFriendRequest(userId)
+                    runSocialAction { mobileStateApi.cancelarSolicitudAmistad(appState.authToken, userId) }
                 },
                 onVerSolicitudes = {
                     navController.navigate(AppDestination.Requests.route)
@@ -705,9 +789,11 @@ private fun AppNavHost(
                 myFriendCode = appState.userProfile.studentId,
                 onAdd = { userId ->
                     appState.addFriendRequest(userId)
+                    runSocialAction { mobileStateApi.enviarSolicitudAmistad(appState.authToken, userId) }
                 },
                 onCancel = { userId ->
                     appState.cancelFriendRequest(userId)
+                    runSocialAction { mobileStateApi.cancelarSolicitudAmistad(appState.authToken, userId) }
                 },
                 onVerSolicitudes = {
                     navController.navigate(AppDestination.Requests.route)
@@ -731,6 +817,19 @@ private fun AppNavHost(
             )
         }
         composable(AppDestination.PrivateChat.route) {
+            // Sondea el estado mientras el chat está abierto para reflejar
+            // mensajes entrantes sin tener que salir y volver a entrar.
+            LaunchedEffect(appState.selectedChatFriendId) {
+                if (appState.authToken.isBlank()) return@LaunchedEffect
+                while (true) {
+                    delay(4000)
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            mobileStateApi.getUserState(appState.authToken)
+                        }
+                    }.onSuccess { snapshot -> appState.replaceUserState(snapshot) }
+                }
+            }
             val friend = appState.socialUsers.find { it.id == appState.selectedChatFriendId }
             if (friend == null) {
                 ChatListScreen(
@@ -750,6 +849,7 @@ private fun AppNavHost(
                     messages = appState.chatMessages,
                     onSendMessage = { text ->
                         appState.sendChatMessage(friend.id, text)
+                        runSocialAction { mobileStateApi.enviarMensaje(appState.authToken, friend.id, text) }
                     },
                     onRecommendMovie = {
                         appState.selectedRecommendationFriendId = friend.id
@@ -765,6 +865,7 @@ private fun AppNavHost(
                 movies = appState.movies,
                 onSendRecommendation = { friendId, movieId, note ->
                     appState.sendRecommendation(friendId, movieId, note)
+                    runSocialAction { mobileStateApi.enviarRecomendacion(appState.authToken, friendId, movieId, note) }
                 },
                 onVerRecomendaciones = {
                     navController.navigate(AppDestination.Recommendations.route)
@@ -1144,6 +1245,7 @@ private fun currentTitle(route: String?): String {
         AppDestination.History.route -> AppDestination.History.title
         AppDestination.RecoverPurchase.route -> AppDestination.RecoverPurchase.title
         AppDestination.Reviews.route -> AppDestination.Reviews.title
+        AppDestination.NuevaResena.route -> AppDestination.NuevaResena.title
         AppDestination.Profile.route -> AppDestination.Profile.title
         AppDestination.SocialHub.route -> AppDestination.SocialHub.title
         AppDestination.Requests.route -> AppDestination.Requests.title

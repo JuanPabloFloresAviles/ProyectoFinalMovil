@@ -79,7 +79,9 @@ fun SocialHubScreen(
         }.filter { (friend, _) ->
             searchQuery.isBlank() ||
                 friend.name.contains(searchQuery, ignoreCase = true)
-        }.sortedByDescending { (_, message) -> messageSortKey(message.time) }
+        }.sortedByDescending { (_, message) ->
+            if (message.sortKey > 0) message.sortKey else messageSortKey(message.time).toLong()
+        }
     }
 
     Column(

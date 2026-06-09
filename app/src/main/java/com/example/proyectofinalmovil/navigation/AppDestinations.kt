@@ -19,6 +19,7 @@ sealed class AppDestination(
     data object History : AppDestination("history", "Historial")
     data object RecoverPurchase : AppDestination("recover-purchase", "Recuperar compra")
     data object Reviews : AppDestination("reviews", "Reseñas")
+    data object NuevaResena : AppDestination("nueva-resena", "Escribir reseña")
     data object Profile : AppDestination("profile", "Perfil")
     data object SocialHub : AppDestination("social-hub", "Centro social")
     data object Requests : AppDestination("requests", "Solicitudes")

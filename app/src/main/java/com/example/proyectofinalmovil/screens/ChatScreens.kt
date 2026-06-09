@@ -131,12 +131,14 @@ fun PrivateChatScreen(
                         fontWeight = FontWeight.Bold,
                         color = GrisTexto,
                     )
-                    Text(
-                        text = if (friend.isOnline) "En línea" else "Disponible después",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = AzulAccion,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    if (friend.isOnline) {
+                        Text(
+                            text = "En línea",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = AzulAccion,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
 

@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -432,6 +433,15 @@ private fun SepararBoletosCard(
     onSeparar: (List<String>) -> Unit,
 ) {
     var seleccion by remember { mutableStateOf(emptySet<String>()) }
+
+    // Al separar un QR, las butacas ya separadas desaparecen de separableSeats.
+    // Limpiamos la selección para no reenviar butacas que ya no se pueden separar.
+    LaunchedEffect(separableSeats) {
+        val vigentes = seleccion.intersect(separableSeats.toSet())
+        if (vigentes.size != seleccion.size) {
+            seleccion = vigentes
+        }
+    }
 
     Surface(
         modifier = Modifier
