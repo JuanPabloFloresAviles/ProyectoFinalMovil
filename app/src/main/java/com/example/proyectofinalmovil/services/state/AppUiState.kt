@@ -23,7 +23,6 @@ import com.example.proyectofinalmovil.services.mock.MockShowtime
 import com.example.proyectofinalmovil.services.mock.MockSocialUser
 import com.example.proyectofinalmovil.services.mock.MockUserProfile
 import com.example.proyectofinalmovil.services.tickets.TicketQrVisibility
-import com.example.proyectofinalmovil.services.mock.generosFiltro
 import com.example.proyectofinalmovil.services.mock.mockSynopsis
 import com.example.proyectofinalmovil.services.mock.mockCast
 import com.example.proyectofinalmovil.services.mock.mockPaymentMethods
@@ -54,7 +53,24 @@ class AppUiState {
     var userProfile by mutableStateOf(emptyUserProfile())
         private set
     val socialUsers = mutableStateListOf<MockSocialUser>()
-    val genres: List<String> = generosFiltro
+
+    /**
+     * Chips de filtro de cartelera. "Todo" y "Estrenos" son fijos; el resto se
+     * derivan de los géneros reales presentes en el catálogo (provienen de la
+     * columna `genero` de la BD / TMDB). Se excluye el placeholder "Cartelera"
+     * de las películas sin género para no mostrar un chip vacío.
+     */
+    val genres: List<String>
+        get() = buildList {
+            add("Todo")
+            add("Estrenos")
+            movies.asSequence()
+                .map { it.genre.trim() }
+                .filter { it.isNotEmpty() && !it.equals("Cartelera", ignoreCase = true) }
+                .distinct()
+                .sorted()
+                .forEach { add(it) }
+        }
 
     val purchases = mutableStateListOf<MockPurchase>()
     val reviews = mutableStateListOf<MockReview>()

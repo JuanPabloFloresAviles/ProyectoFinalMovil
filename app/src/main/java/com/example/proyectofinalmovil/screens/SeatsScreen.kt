@@ -44,8 +44,6 @@ private val GrisOcupado = Color(0xFFF2EFE4)
 private val BordeAsiento = Color(0xFFD6D1C2)
 private val GrisTexto = Color(0xFF333333)
 
-private val etiquetasFilas = listOf("A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
-
 @Composable
 fun SeatsScreen(
     movieId: String,
@@ -58,6 +56,14 @@ fun SeatsScreen(
     val seleccionados = appState.selectedSeatIds
     val ocupados = appState.occupiedSeatsForCurrentShowtime()
     val subtotal = appState.ticketTotal()
+
+    // Dimensiones reales de la sala (la BD las trae en el catálogo). Antes
+    // estaban fijas en 10 filas y 8 columnas, por lo que una sala 10x10 perdía
+    // 2 columnas. Si por alguna razón no se encuentra la sala, se asume 10x10.
+    val sala = appState.adminRooms.firstOrNull { it.id == funcion.roomId }
+    val numFilas = (sala?.rows ?: 10).coerceIn(1, 26)
+    val numColumnas = (sala?.columns ?: 10).coerceAtLeast(1)
+    val butacasInactivas = sala?.inactiveSeatLabels?.toSet() ?: emptySet()
 
     Column(
         modifier = modifier
@@ -123,7 +129,8 @@ fun SeatsScreen(
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                etiquetasFilas.forEachIndexed { indiceFila, etiqueta ->
+                for (indiceFila in 0 until numFilas) {
+                    val etiqueta = ('A' + indiceFila).toString()
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -137,10 +144,11 @@ fun SeatsScreen(
                             textAlign = TextAlign.Center,
                         )
 
-                        for (indiceColumna in 0 until 8) {
-                            val nombreAsiento = "${etiquetasFilas[indiceFila]}${indiceColumna + 1}"
+                        for (indiceColumna in 0 until numColumnas) {
+                            val nombreAsiento = "$etiqueta${indiceColumna + 1}"
                             val estaSeleccionado = nombreAsiento in seleccionados
                             val estaOcupado = nombreAsiento in ocupados
+                            val estaInactivo = nombreAsiento in butacasInactivas
 
                             Box(
                                 modifier = Modifier
@@ -149,6 +157,7 @@ fun SeatsScreen(
                                     .background(
                                         when {
                                             estaSeleccionado -> AzulAccion
+                                            estaInactivo -> AmarilloMovilidad
                                             estaOcupado -> GrisOcupado
                                             else -> Blanco
                                         },
@@ -157,12 +166,15 @@ fun SeatsScreen(
                                         width = 1.dp,
                                         color = when {
                                             estaSeleccionado -> AzulAccion
+                                            estaInactivo -> AmarilloMovilidad
                                             estaOcupado -> GrisOcupado
                                             else -> BordeAsiento
                                         },
                                         shape = RoundedCornerShape(6.dp),
                                     )
-                                    .clickable(enabled = !estaOcupado) { appState.toggleSeat(nombreAsiento) },
+                                    .clickable(enabled = !estaOcupado && !estaInactivo) {
+                                        appState.toggleSeat(nombreAsiento)
+                                    },
                             )
                         }
 

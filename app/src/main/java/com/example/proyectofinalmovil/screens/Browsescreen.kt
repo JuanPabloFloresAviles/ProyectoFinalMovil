@@ -22,8 +22,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.RemoteMoviePoster
 import com.example.proyectofinalmovil.components.UiLoader
 import com.example.proyectofinalmovil.services.mock.MockShowtime
@@ -115,7 +112,13 @@ fun BrowseScreen(
         return
     }
 
-    val destacada = appState.movies.firstOrNull { it.isFeatured } ?: appState.movies.first()
+    // Solo entran a cartelera las películas con al menos una función vigente.
+    // El catálogo ya descarta las funciones que terminaron, así que una lista de
+    // funciones vacía significa que la película no tiene ninguna próxima función.
+    val peliculasEnCartelera = appState.movies.filter { appState.showtimesFor(it.id).isNotEmpty() }
+    val destacada = peliculasEnCartelera.firstOrNull { it.isFeatured }
+        ?: peliculasEnCartelera.firstOrNull()
+        ?: appState.movies.first()
     val todayLabel = remember {
         LocalDate.now()
             .format(DateTimeFormatter.ofPattern("EEEE · d MMMM", Locale("es", "MX")))
@@ -134,12 +137,10 @@ fun BrowseScreen(
 
     var filtroActivo by remember { mutableStateOf("Estrenos") }
 
-    val peliculasFiltradas = remember(filtroActivo) {
-        when (filtroActivo) {
-            "Todo" -> appState.movies.filter { !it.isFeatured }
-            "Estrenos" -> appState.movies.filter { it.isNew && !it.isFeatured }
-            else -> appState.movies.filter { it.genre == filtroActivo && !it.isFeatured }
-        }
+    val peliculasFiltradas = when (filtroActivo) {
+        "Todo" -> peliculasEnCartelera.filter { !it.isFeatured }
+        "Estrenos" -> peliculasEnCartelera.filter { it.isNew && !it.isFeatured }
+        else -> peliculasEnCartelera.filter { it.genre == filtroActivo && !it.isFeatured }
     }
 
     Column(
@@ -170,7 +171,7 @@ fun BrowseScreen(
             }
 
             Text(
-                text = "${appState.movies.size} películas",
+                text = "${peliculasEnCartelera.size} películas",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -590,8 +591,6 @@ private fun PeliculaDestacadaCard(
     onComprarClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var esFavorita by remember { mutableStateOf(false) }
-
     Box(
         modifier = modifier
             .clip(MaterialTheme.shapes.large)
@@ -691,44 +690,21 @@ private fun PeliculaDestacadaCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
+            Button(
+                onClick = onComprarClick,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CinemaBlue,
+                    contentColor = Color.White,
+                ),
+                shape = MaterialTheme.shapes.medium,
+                contentPadding = PaddingValues(vertical = 12.dp),
             ) {
-                Button(
-                    onClick = onComprarClick,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = CinemaBlue,
-                        contentColor = Color.White,
-                    ),
-                    shape = MaterialTheme.shapes.medium,
-                    contentPadding = PaddingValues(vertical = 12.dp),
-                ) {
-                    Text(
-                        text = "Comprar boletos",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = Color.White,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clickable { esFavorita = !esFavorita },
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (esFavorita) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                            contentDescription = if (esFavorita) "Quitar de favoritos" else "Agregar a favoritos",
-                            tint = if (esFavorita) Color(0xFFD84545) else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
+                Text(
+                    text = "Comprar boletos",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
@@ -750,14 +726,6 @@ private fun TarjetaPelicula(
         RemoteMoviePoster(
             movie = movie,
             modifier = Modifier.fillMaxSize(),
-        )
-        Text(
-            text = "CineUABCS · ${movie.year}",
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-            color = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(10.dp),
         )
 
         Column(

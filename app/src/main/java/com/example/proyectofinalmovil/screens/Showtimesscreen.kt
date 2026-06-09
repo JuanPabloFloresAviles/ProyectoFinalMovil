@@ -47,10 +47,20 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
+
+/**
+ * Zona horaria de La Paz/BCS: UTC-7 fijo todo el año (México eliminó el horario
+ * de verano en 2022). Debe coincidir con el offset usado en [laPazDateKey] para
+ * que los chips de día y la fecha de cada función se calculen en la misma zona;
+ * de lo contrario, en dispositivos en UTC las funciones de la noche "de hoy"
+ * (que en UTC ya caen al día siguiente) no aparecen en ningún chip.
+ */
+private val LA_PAZ_TZ: TimeZone = TimeZone.getTimeZone("GMT-7")
 
 private fun generarDias(): List<Pair<String, String>> {
     val dias = mutableListOf<Pair<String, String>>()
-    val cal = Calendar.getInstance()
+    val cal = Calendar.getInstance(LA_PAZ_TZ)
     val nombresDia = listOf("LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM")
     repeat(7) {
         val diaSemana = (cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7
@@ -387,9 +397,11 @@ private fun MockShowtime.matchesDate(dateKey: String, selectedDayOffset: Int): B
 }
 
 private fun dateKeyForOffset(dayOffset: Int): String {
-    val calendar = Calendar.getInstance()
+    val calendar = Calendar.getInstance(LA_PAZ_TZ)
     calendar.add(Calendar.DAY_OF_YEAR, dayOffset)
-    return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
+    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    formatter.timeZone = LA_PAZ_TZ
+    return formatter.format(calendar.time)
 }
 
 private fun laPazDateKey(startsAt: String?): String? {

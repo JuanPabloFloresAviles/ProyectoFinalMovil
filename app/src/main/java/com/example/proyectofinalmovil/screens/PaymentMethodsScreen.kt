@@ -32,9 +32,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.AppIcons
+import com.example.proyectofinalmovil.components.CardNumberVisualTransformation
+import com.example.proyectofinalmovil.components.ExpiryVisualTransformation
+import com.example.proyectofinalmovil.components.expiryError
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
+import com.example.proyectofinalmovil.components.formatExpiry
 import com.example.proyectofinalmovil.services.mock.MockPaymentMethod
 
 private val FondoCrema = Color(0xFFF9F6EB)
@@ -131,8 +135,9 @@ fun PaymentMethodsScreen(
                     )
                     UiInput(
                         value = cardNumber,
-                        onValueChange = { if (it.length <= 16) cardNumber = it.filter { c -> c.isDigit() } },
+                        onValueChange = { cardNumber = it.filter { c -> c.isDigit() }.take(16) },
                         label = "Número de tarjeta",
+                        visualTransformation = CardNumberVisualTransformation,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
                     UiInput(
@@ -140,21 +145,30 @@ fun PaymentMethodsScreen(
                         onValueChange = { holderName = it },
                         label = "Nombre del titular",
                     )
+                    val expiryErrorMsg = expiryError(expiry)
                     UiInput(
                         value = expiry,
-                        onValueChange = {
-                            val digits = it.filter { c -> c.isDigit() }.take(4)
-                            expiry = if (digits.length >= 3) "${digits.take(2)}/${digits.drop(2)}" else digits
-                        },
+                        onValueChange = { expiry = it.filter { c -> c.isDigit() }.take(4) },
                         label = "Vencimiento (MM/AA)",
+                        visualTransformation = ExpiryVisualTransformation,
+                        isError = expiryErrorMsg != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
+                    if (expiryErrorMsg != null) {
+                        Text(
+                            text = expiryErrorMsg,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         UiPrimaryButton(
                             text = "Guardar tarjeta",
-                            enabled = cardNumber.length >= 4 && holderName.isNotBlank() && expiry.length >= 4,
+                            enabled = cardNumber.length >= 4 && holderName.isNotBlank() &&
+                                expiry.length == 4 && expiryErrorMsg == null,
                             onClick = {
-                                onAddMethod(cardNumber.trim(), holderName.trim(), expiry.trim())
+                                onAddMethod(cardNumber.trim(), holderName.trim(), formatExpiry(expiry))
                                 resetForm()
                             },
                             modifier = Modifier.weight(1f),
