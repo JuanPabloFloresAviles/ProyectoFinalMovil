@@ -43,6 +43,7 @@ fun ReviewsScreen(
     onVolverAPerfil: () -> Unit,
     onVerCartelera: () -> Unit,
     onVolverADetalle: () -> Unit = onVerCartelera,
+    onEscribirResena: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
@@ -51,6 +52,7 @@ fun ReviewsScreen(
     val myReviews = filteredReviews.filter { it.isMine }
     val communityReviews = filteredReviews.filterNot { it.isMine }
     val isMovieContext = selectedMovie != null
+    val puedeResenar = isMovieContext && appState.signedInEmail.isNotBlank()
 
     Column(
         modifier = modifier
@@ -143,11 +145,24 @@ fun ReviewsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
-                UiPrimaryButton(
-                    text = if (isMovieContext) "Volver al detalle" else "Volver a perfil",
-                    onClick = if (isMovieContext) onVolverADetalle else onVolverAPerfil,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                if (puedeResenar) {
+                    UiPrimaryButton(
+                        text = if (myReviews.isNotEmpty()) "Editar mi reseña" else "Escribir reseña",
+                        onClick = onEscribirResena,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    UiGhostButton(
+                        text = "Volver al detalle",
+                        onClick = onVolverADetalle,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                } else {
+                    UiPrimaryButton(
+                        text = if (isMovieContext) "Volver al detalle" else "Volver a perfil",
+                        onClick = if (isMovieContext) onVolverADetalle else onVolverAPerfil,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
                 UiGhostButton(
                     text = if (isMovieContext) "Ir a cartelera" else "Ver cartelera",
                     onClick = onVerCartelera,

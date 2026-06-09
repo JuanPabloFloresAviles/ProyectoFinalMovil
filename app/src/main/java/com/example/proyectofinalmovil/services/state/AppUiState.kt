@@ -156,9 +156,13 @@ class AppUiState {
 
     fun replaceCatalog(snapshot: CatalogSnapshot) {
         if (snapshot.movies.isNotEmpty()) {
+            val seleccionPrevia = selectedMovieId
             movies.clear()
             movies.addAll(snapshot.movies)
-            selectedMovieId = defaultFeaturedMovieId()
+            // Conservar la película seleccionada si sigue existiendo, para que una
+            // recarga del catálogo (p. ej. tras publicar una reseña) no cambie de contexto.
+            selectedMovieId = seleccionPrevia.takeIf { id -> movies.any { it.id == id } }
+                ?: defaultFeaturedMovieId()
         }
         showtimesByMovieId.clear()
         showtimesByMovieId.putAll(snapshot.showtimesByMovieId)
@@ -198,8 +202,12 @@ class AppUiState {
         incomingRequestIds.addAll(snapshot.incomingRequestIds)
         outgoingRequestIds.clear()
         outgoingRequestIds.addAll(snapshot.outgoingRequestIds)
-        selectedChatFriendId = friendIds.firstOrNull() ?: ""
-        selectedRecommendationFriendId = friendIds.firstOrNull() ?: ""
+        // Conservar la selección actual si sigue siendo un amigo válido; así un
+        // refresco de estado (p. ej. tras enviar un mensaje) no cambia el chat abierto.
+        selectedChatFriendId = selectedChatFriendId.takeIf { it in friendIds }
+            ?: friendIds.firstOrNull() ?: ""
+        selectedRecommendationFriendId = selectedRecommendationFriendId.takeIf { it in friendIds }
+            ?: friendIds.firstOrNull() ?: ""
         activePurchaseFolio = initialActivePurchase()?.folio ?: ""
     }
 
@@ -597,9 +605,27 @@ class AppUiState {
                 text = text,
                 time = "Ahora",
                 isMine = true,
+                sortKey = System.currentTimeMillis(),
             ),
         )
     }
+
+    fun upsertMyReview(movieId: String, rating: Int, comment: String) {
+        val index = reviews.indexOfFirst { it.isMine && it.movieId == movieId }
+        val review = MockReview(
+            id = if (index >= 0) reviews[index].id else "review-mine-$movieId",
+            movieId = movieId,
+            author = userProfile.name.ifBlank { "Tú" },
+            rating = rating,
+            date = "Ahora",
+            comment = comment,
+            isMine = true,
+        )
+        if (index >= 0) reviews[index] = review else reviews.add(0, review)
+    }
+
+    fun myReviewFor(movieId: String): MockReview? =
+        reviews.firstOrNull { it.isMine && it.movieId == movieId }
 
     fun sendRecommendation(friendId: String, movieId: String, note: String) {
         recommendations.add(

@@ -447,6 +447,7 @@ data class MockChatMessage(
     val text: String,
     val time: String,
     val isMine: Boolean,
+    val sortKey: Long = 0,
 )
 
 val mockChatMessages = listOf(
