@@ -82,6 +82,14 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import com.example.proyectofinalmovil.services.mock.MockPurchase
+import com.example.proyectofinalmovil.services.mock.MockPurchaseConcessionItem
+import com.example.proyectofinalmovil.services.mock.MockTicketPackage
+import com.example.proyectofinalmovil.services.mock.MockConcessionPackage
+import org.json.JSONArray
+import org.json.JSONObject
 
 @Composable
 fun AppRoot() {
@@ -135,6 +143,7 @@ private fun AppNavHost(
     navController: NavHostController,
 ) {
     val appState = LocalAppUiState.current
+    val contexto = LocalContext.current
     val authApi = remember { AuthApi() }
     val catalogApi = remember { CatalogApi() }
     val mobileStateApi = remember { MobileStateApi() }
@@ -203,6 +212,8 @@ private fun AppNavHost(
     }
 
     LaunchedEffect(Unit) {
+        val comprasGuardadas = withContext(Dispatchers.IO) { cargarComprasInvitadoLocal(contexto) }
+        appState.cargarComprasLocales(comprasGuardadas)
         loadCatalog()
     }
 
@@ -434,6 +445,11 @@ private fun AppNavHost(
                             }
                         }.onSuccess { purchase ->
                             appState.registerCompletedPurchase(purchase)
+                            if (payload.esInvitado) {
+                                runCatching {
+                                    withContext(Dispatchers.IO) { guardarCompraInvitadoLocal(contexto, purchase) }
+                                }
+                            }
                             runCatching {
                                 withContext(Dispatchers.IO) { catalogApi.getCatalog() }
                             }.onSuccess { snapshot ->
@@ -1302,4 +1318,141 @@ private fun AppRootPreview() {
     ProyectoFinalMovilTheme {
         AppRoot()
     }
+}
+
+private const val PREFS_NOMBRE = "cine_uabcs_prefs"
+private const val CLAVE_COMPRAS_INVITADO = "compras_invitado"
+
+private fun guardarCompraInvitadoLocal(contexto: Context, compra: MockPurchase) {
+    val prefs = contexto.getSharedPreferences(PREFS_NOMBRE, Context.MODE_PRIVATE)
+    val existentes = runCatching {
+        JSONArray(prefs.getString(CLAVE_COMPRAS_INVITADO, "[]") ?: "[]")
+    }.getOrElse { JSONArray() }
+
+    val actualizado = JSONArray()
+    for (i in 0 until existentes.length()) {
+        val obj = existentes.getJSONObject(i)
+        if (obj.optString("folio") != compra.folio) actualizado.put(obj)
+    }
+    actualizado.put(compraAJson(compra))
+
+    prefs.edit().putString(CLAVE_COMPRAS_INVITADO, actualizado.toString()).apply()
+}
+
+private fun cargarComprasInvitadoLocal(contexto: Context): List<MockPurchase> {
+    val prefs = contexto.getSharedPreferences(PREFS_NOMBRE, Context.MODE_PRIVATE)
+    val json = prefs.getString(CLAVE_COMPRAS_INVITADO, "[]") ?: "[]"
+    return runCatching {
+        val arr = JSONArray(json)
+        List(arr.length()) { i -> jsonACompra(arr.getJSONObject(i)) }
+    }.getOrElse { emptyList() }
+}
+
+private fun compraAJson(compra: MockPurchase): JSONObject {
+    val asientos = JSONArray().also { arr -> compra.seats.forEach { arr.put(it) } }
+    val productos = JSONArray().also { arr ->
+        compra.concessionItems.forEach { item ->
+            arr.put(
+                JSONObject()
+                    .put("id", item.id).put("name", item.name)
+                    .put("quantity", item.quantity).put("type", item.type)
+            )
+        }
+    }
+    val paquetesBoletos = JSONArray().also { arr ->
+        compra.ticketPackages.forEach { pkg ->
+            val pkgAsientos = JSONArray().also { s -> pkg.seats.forEach { s.put(it) } }
+            arr.put(
+                JSONObject()
+                    .put("id", pkg.id).put("label", pkg.label)
+                    .put("seats", pkgAsientos).put("qrCode", pkg.qrCode)
+            )
+        }
+    }
+    val paquetesDulceria = JSONArray().also { arr ->
+        compra.concessionPackages.forEach { pkg ->
+            val items = JSONArray().also { it2 ->
+                pkg.items.forEach { item ->
+                    it2.put(
+                        JSONObject()
+                            .put("id", item.id).put("name", item.name)
+                            .put("quantity", item.quantity).put("type", item.type)
+                    )
+                }
+            }
+            arr.put(
+                JSONObject()
+                    .put("id", pkg.id).put("label", pkg.label)
+                    .put("items", items).put("qrCode", pkg.qrCode)
+            )
+        }
+    }
+    return JSONObject()
+        .put("folio", compra.folio)
+        .put("email", compra.email)
+        .put("movieId", compra.movieId)
+        .put("date", compra.date)
+        .put("time", compra.time)
+        .put("room", compra.room)
+        .put("seats", asientos)
+        .put("status", compra.status)
+        .put("ticketTotal", compra.ticketTotal)
+        .put("concessionsTotal", compra.concessionsTotal)
+        .put("qrCode", compra.qrCode)
+        .put("paymentMethodLabel", compra.paymentMethodLabel)
+        .put("guestPurchase", compra.guestPurchase)
+        .put("concessionItems", productos)
+        .put("ticketPackages", paquetesBoletos)
+        .put("concessionPackages", paquetesDulceria)
+        .apply { compra.qrExpiresAtMillis?.let { put("qrExpiresAtMillis", it) } }
+}
+
+private fun jsonACompra(json: JSONObject): MockPurchase {
+    val asientos = json.optJSONArray("seats") ?: JSONArray()
+    val productos = json.optJSONArray("concessionItems") ?: JSONArray()
+    val paquetesBoletos = json.optJSONArray("ticketPackages") ?: JSONArray()
+    val paquetesDulceria = json.optJSONArray("concessionPackages") ?: JSONArray()
+
+    fun parsearItems(arr: JSONArray) = List(arr.length()) { i ->
+        val o = arr.getJSONObject(i)
+        MockPurchaseConcessionItem(
+            id = o.optString("id"), name = o.optString("name"),
+            quantity = o.optInt("quantity"), type = o.optString("type", "producto"),
+        )
+    }
+
+    return MockPurchase(
+        folio = json.optString("folio"),
+        email = json.optString("email"),
+        movieId = json.optString("movieId"),
+        date = json.optString("date"),
+        time = json.optString("time"),
+        room = json.optString("room"),
+        seats = List(asientos.length()) { asientos.getString(it) },
+        status = json.optString("status"),
+        ticketTotal = json.optInt("ticketTotal"),
+        concessionsTotal = json.optInt("concessionsTotal"),
+        qrCode = json.optString("qrCode"),
+        qrExpiresAtMillis = if (json.has("qrExpiresAtMillis")) json.optLong("qrExpiresAtMillis") else null,
+        paymentMethodLabel = json.optString("paymentMethodLabel"),
+        guestPurchase = json.optBoolean("guestPurchase", true),
+        concessionItems = parsearItems(productos),
+        ticketPackages = List(paquetesBoletos.length()) { i ->
+            val pkg = paquetesBoletos.getJSONObject(i)
+            val pkgAsientos = pkg.optJSONArray("seats") ?: JSONArray()
+            MockTicketPackage(
+                id = pkg.optString("id"), label = pkg.optString("label"),
+                seats = List(pkgAsientos.length()) { pkgAsientos.getString(it) },
+                qrCode = pkg.optString("qrCode"),
+            )
+        },
+        concessionPackages = List(paquetesDulceria.length()) { i ->
+            val pkg = paquetesDulceria.getJSONObject(i)
+            MockConcessionPackage(
+                id = pkg.optString("id"), label = pkg.optString("label"),
+                items = parsearItems(pkg.optJSONArray("items") ?: JSONArray()),
+                qrCode = pkg.optString("qrCode"),
+            )
+        },
+    )
 }
