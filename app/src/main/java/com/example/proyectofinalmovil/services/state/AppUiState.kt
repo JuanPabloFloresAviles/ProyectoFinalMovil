@@ -25,14 +25,15 @@ import com.example.proyectofinalmovil.services.mock.MockUserProfile
 import com.example.proyectofinalmovil.services.tickets.TicketQrVisibility
 import com.example.proyectofinalmovil.services.mock.mockSynopsis
 import com.example.proyectofinalmovil.services.mock.mockCast
-import com.example.proyectofinalmovil.services.mock.mockPaymentMethods
 import com.example.proyectofinalmovil.services.mock.MockConcessionPackage
 import com.example.proyectofinalmovil.services.mock.MockTicketPackage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private const val DEFAULT_PURCHASE_EMAIL = "invitado@cineuabcs.mx"
+// El correo de recuperación arranca vacío: el invitado debe escribir el suyo
+// y se valida que no quede en blanco antes de confirmar la compra.
+private const val DEFAULT_PURCHASE_EMAIL = ""
 
 data class AdminConcessionCombo(
     val id: String,
@@ -171,13 +172,9 @@ class AppUiState {
         concessions.addAll(snapshot.concessions)
         concessionCombos.clear()
         concessionCombos.addAll(snapshot.combos)
-        if (paymentMethods.isEmpty()) {
-            paymentMethods.clear()
-            paymentMethods.addAll(mockPaymentMethods)
-            selectedPaymentMethodId = paymentMethods.firstOrNull { it.isDefault }?.id
-                ?: paymentMethods.firstOrNull()?.id
-                ?: ""
-        }
+        // No se siembran tarjetas de ejemplo: un invitado no debe tener datos
+        // personales. Las tarjetas reales llegan del backend (replacePaymentMethods)
+        // tras iniciar sesión, o el invitado agrega la suya en el resumen de compra.
         adminRooms.clear()
         adminRooms.addAll(snapshot.rooms)
         concessionQuantities.clear()
@@ -524,6 +521,15 @@ class AppUiState {
         purchases[index] = current.copy(
             ticketPackages = current.ticketPackages + ticketPackage,
         )
+    }
+
+    /**
+     * Inserta o reemplaza (por folio) una compra recuperada del backend. Se usa al
+     * refrescar una compra de invitado para traer sus QR separados más recientes.
+     */
+    fun upsertPurchase(purchase: MockPurchase) {
+        val index = purchases.indexOfFirst { it.folio == purchase.folio }
+        if (index >= 0) purchases[index] = purchase else purchases.add(0, purchase)
     }
 
     fun activeQrPurchase(nowMillis: Long = System.currentTimeMillis()): MockPurchase? {

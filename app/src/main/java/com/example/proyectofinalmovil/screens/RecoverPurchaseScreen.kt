@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,9 +29,13 @@ import androidx.compose.ui.unit.sp
 import com.example.proyectofinalmovil.components.UiGhostButton
 import com.example.proyectofinalmovil.components.UiInput
 import com.example.proyectofinalmovil.components.UiPrimaryButton
+import com.example.proyectofinalmovil.services.api.MobileStateApi
 import com.example.proyectofinalmovil.services.mock.MockPurchase
 import com.example.proyectofinalmovil.services.state.LocalAppUiState
 import com.example.proyectofinalmovil.ui.theme.ProyectoFinalMovilTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val FondoCrema = Color(0xFFF9F6EB)
 private val AzulAccion = Color(0xFF1067A6)
@@ -46,15 +51,36 @@ fun RecoverPurchaseScreen(
     modifier: Modifier = Modifier,
 ) {
     val appState = LocalAppUiState.current
-    var folio by remember { mutableStateOf("CINE-2026-4A7F") }
-    var email by remember { mutableStateOf("invitado@cineuabcs.mx") }
+    val coroutineScope = rememberCoroutineScope()
+    val mobileStateApi = remember { MobileStateApi() }
+    var folio by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var searchDone by remember { mutableStateOf(false) }
+    var isSearching by remember { mutableStateOf(false) }
+    var recoveredPurchase by remember { mutableStateOf<MockPurchase?>(null) }
 
-    val recoveredPurchase = remember(folio, email, searchDone) {
-        if (!searchDone) {
-            null
-        } else {
-            appState.recoverPurchase(folio, email)
+    fun buscarCompra() {
+        // 1) Búsqueda local inmediata (compra ya cargada en este dispositivo).
+        val local = appState.recoverPurchase(folio, email)
+        if (local != null) {
+            recoveredPurchase = local
+            searchDone = true
+            return
+        }
+        // 2) Consulta al backend: recupera compras de invitado guardadas en la BD,
+        //    aunque se hayan hecho en otro dispositivo o tras limpiar la app.
+        isSearching = true
+        searchDone = false
+        coroutineScope.launch {
+            val remoto = runCatching {
+                withContext(Dispatchers.IO) { mobileStateApi.recuperarCompra(folio, email) }
+            }.getOrNull()
+            if (remoto != null) {
+                appState.cargarComprasLocales(listOf(remoto))
+            }
+            recoveredPurchase = remoto
+            isSearching = false
+            searchDone = true
         }
     }
 
@@ -104,9 +130,10 @@ fun RecoverPurchaseScreen(
                         onValueChange = {
                             folio = it
                             searchDone = false
+                            recoveredPurchase = null
                         },
                         label = "Folio",
-                        placeholder = "CINE-2026-4A7F",
+                        placeholder = "CU-",
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     UiInput(
@@ -114,26 +141,28 @@ fun RecoverPurchaseScreen(
                         onValueChange = {
                             email = it
                             searchDone = false
+                            recoveredPurchase = null
                         },
                         label = "Correo",
-                        placeholder = "correo@ejemplo.com",
+                        placeholder = "correo@correo.com",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                     UiPrimaryButton(
-                        text = "Buscar compra",
-                        onClick = { searchDone = true },
-                        enabled = folio.isNotBlank() && email.isNotBlank(),
+                        text = if (isSearching) "Buscando..." else "Buscar compra",
+                        onClick = { buscarCompra() },
+                        enabled = folio.isNotBlank() && email.isNotBlank() && !isSearching,
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val purchase = recoveredPurchase
             when {
-                recoveredPurchase != null -> RecoveredPurchaseCard(
-                    purchase = recoveredPurchase,
-                    onVerBoleto = { onVerBoleto(recoveredPurchase.folio) },
+                purchase != null -> RecoveredPurchaseCard(
+                    purchase = purchase,
+                    onVerBoleto = { onVerBoleto(purchase.folio) },
                 )
                 searchDone -> SearchMessage(
                     title = "No encontramos esa compra",
@@ -141,8 +170,8 @@ fun RecoverPurchaseScreen(
                     background = RojoSuave,
                 )
                 else -> SearchMessage(
-                    title = "Dato de prueba",
-                    body = "Puedes buscar CINE-2026-4A7F con invitado@cineuabcs.mx para simular una recuperación.",
+                    title = "¿Compraste como invitado?",
+                    body = "Ingresa el folio (empieza con CU-) y el correo que usaste al comprar para recuperar tus boletos y dulcería.",
                     background = VerdeSuave,
                 )
             }

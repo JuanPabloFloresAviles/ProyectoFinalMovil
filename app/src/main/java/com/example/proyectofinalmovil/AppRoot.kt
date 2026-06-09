@@ -491,6 +491,28 @@ private fun AppNavHost(
         composable(AppDestination.TicketQr.route) {
             var isSeparating by remember { mutableStateOf(false) }
             var separarError by remember { mutableStateOf<String?>(null) }
+            // Las compras de invitado se cachean localmente al comprar, pero esa copia
+            // no conoce los QR separados después. Al abrir el boleto refrescamos desde el
+            // backend (fuente de verdad) y re-guardamos para que sobrevivan al reinicio.
+            LaunchedEffect(appState.activePurchaseFolio) {
+                val activa = appState.purchases.firstOrNull {
+                    it.folio == appState.activePurchaseFolio
+                }
+                if (activa != null && activa.guestPurchase &&
+                    activa.folio.isNotBlank() && activa.email.contains("@")
+                ) {
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            mobileStateApi.recuperarCompra(activa.folio, activa.email)
+                        }
+                    }.getOrNull()?.let { refrescada ->
+                        appState.upsertPurchase(refrescada)
+                        runCatching {
+                            withContext(Dispatchers.IO) { guardarCompraInvitadoLocal(contexto, refrescada) }
+                        }
+                    }
+                }
+            }
             TicketQrScreen(
                 onIrAlHistorial = {
                     navController.navigate(AppDestination.History.route)
