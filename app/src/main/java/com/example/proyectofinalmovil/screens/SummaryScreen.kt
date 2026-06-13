@@ -237,18 +237,29 @@ fun SummaryScreen(
 
             SeccionResumen(titulo = "Pago") {
                 if (appState.signedInEmail.isBlank()) {
+                    val correoInvitado = appState.guestCheckoutEmail.trim()
+                    val correoInvalido = !esCorreoValido(correoInvitado)
                     UiInput(
                         value = appState.guestCheckoutEmail,
                         onValueChange = { appState.updateGuestCheckoutEmail(it) },
                         label = "Correo para recuperar la compra",
                         placeholder = "correo@ejemplo.com",
+                        isError = correoInvitado.isNotEmpty() && correoInvalido,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Se guardará junto al folio para recuperar boletos y dulcería más tarde.",
+                        text = if (correoInvalido) {
+                            "Ingresa un correo válido: lo necesitas para recuperar tus boletos y dulcería más tarde."
+                        } else {
+                            "Se guardará junto al folio para recuperar boletos y dulcería más tarde."
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        color = GrisTexto.copy(alpha = 0.62f),
+                        color = if (correoInvalido) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            GrisTexto.copy(alpha = 0.62f)
+                        },
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -461,7 +472,7 @@ fun SummaryScreen(
                     asientosEjemplo.isNotEmpty() &&
                     appState.selectedPaymentMethodId.isNotBlank() &&
                     cvv.length in 3..4 &&
-                    (appState.signedInEmail.isNotBlank() || appState.guestCheckoutEmail.contains("@")),
+                    (appState.signedInEmail.isNotBlank() || esCorreoValido(appState.guestCheckoutEmail.trim())),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -469,6 +480,11 @@ fun SummaryScreen(
         }
     }
 }
+
+private val correoRegex = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+
+/** Validación básica de correo: no vacío y con formato usuario@dominio.tld. */
+private fun esCorreoValido(correo: String): Boolean = correoRegex.matches(correo.trim())
 
 private data class DulceriaResumenItem(
     val producto: MockConcessionItem,

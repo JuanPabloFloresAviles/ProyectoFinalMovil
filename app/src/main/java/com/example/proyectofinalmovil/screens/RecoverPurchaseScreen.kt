@@ -98,14 +98,14 @@ fun RecoverPurchaseScreen(
                         value = folio,
                         onValueChange = { folio = it },
                         label = "Folio",
-                        placeholder = "CINE-2026-4A7F",
+                        placeholder = "CU-",
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     UiInput(
                         value = email,
                         onValueChange = { email = it },
                         label = "Correo",
-                        placeholder = "correo@ejemplo.com",
+                        placeholder = "correo@correo.com",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     )
                     Spacer(modifier = Modifier.height(18.dp))
@@ -131,8 +131,8 @@ fun RecoverPurchaseScreen(
                     background = RojoSuave,
                 )
                 else -> SearchMessage(
-                    title = "Ingresa tu folio y correo",
-                    body = "Escribe el folio y correo usados al comprar como invitado y presiona Buscar.",
+                    title = "¿Compraste como invitado?",
+                    body = "Ingresa el folio (empieza con CU-) y el correo que usaste al comprar para recuperar tus boletos y dulcería.",
                     background = VerdeSuave,
                 )
             }

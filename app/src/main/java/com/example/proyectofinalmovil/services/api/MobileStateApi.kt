@@ -92,6 +92,22 @@ class MobileStateApi(
         return parseCheckoutPurchase(json)
     }
 
+    /**
+     * Recupera una compra de invitado desde el backend por folio + correo.
+     * Devuelve null cuando no existe (404), para distinguir "no encontrada" de un error real.
+     */
+    fun recuperarCompra(folio: String, correo: String): MockPurchase? {
+        val body = JSONObject()
+            .put("folio", folio.trim())
+            .put("correo", correo.trim())
+        return try {
+            val json = JSONObject(client.postJson("mobile/compras/recuperar", body.toString(), null))
+            parseCheckoutPurchase(json)
+        } catch (error: ApiException) {
+            if (error.statusCode == 404) null else throw error
+        }
+    }
+
     fun listPaymentMethods(token: String): List<MockPaymentMethod> {
         val json = JSONObject(client.get("mobile/perfil/metodos-pago", token))
         return parsePaymentMethods(json.optJSONArray("metodos") ?: JSONArray())
@@ -177,17 +193,6 @@ class MobileStateApi(
                     ),
                 )
             }
-        }
-    }
-
-    fun recuperarCompra(folio: String, email: String): MockPurchase? {
-        return try {
-            val folioEnc = java.net.URLEncoder.encode(folio.trim(), "UTF-8")
-            val emailEnc = java.net.URLEncoder.encode(email.trim(), "UTF-8")
-            val json = JSONObject(client.get("mobile/compras/$folioEnc?email=$emailEnc"))
-            parseCheckoutPurchase(json)
-        } catch (e: Exception) {
-            null
         }
     }
 
